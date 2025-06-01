@@ -12,7 +12,7 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8080'],
+  origin: ['http://localhost:3000', 'http://localhost:8080', 'https://healthcaresecuresystem.netlify.app/'],
   credentials: true,
 }));
 
