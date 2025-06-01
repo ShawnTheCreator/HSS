@@ -1,45 +1,85 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const User = require('../models/User'); // This schema must reflect your HSS structure
 const router = express.Router();
 
-// Register
+// Register a staff user
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const {
+      full_name,
+      email,
+      phone_number,
+      password,
+      role, // e.g., Doctor, Nurse
+      department,
+      biometric_hash, // Optional
+      device_fingerprint,
+      location_zone
+    } = req.body;
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ msg: 'User already exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({ username, email, password: hashedPassword });
-    await user.save();
+    const newUser = new User({
+      full_name,
+      email,
+      phone_number,
+      password: hashedPassword,
+      role,
+      department,
+      biometric_hash,
+      device_fingerprint,
+      location_zone,
+      created_at: new Date(),
+      updated_at: new Date()
+    });
+
+    await newUser.save();
 
     res.status(201).json({ msg: 'User registered successfully' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Server error during registration' });
   }
 });
 
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, device_fingerprint } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: 'User not found' });
+    if (!user) return res.status(404).json({ msg: 'User not found' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Optional: check fingerprint match
+    if (device_fingerprint && user.device_fingerprint !== device_fingerprint) {
+      return res.status(403).json({ msg: 'Unrecognized device fingerprint' });
+    }
 
-    res.json({ token, user: { id: user._id, username: user.username, email: user.email } });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h'
+    });
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        full_name: user.full_name,
+        email: user.email,
+        role: user.role,
+        department: user.department
+      }
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: 'Server error during login' });
   }
 });
 
