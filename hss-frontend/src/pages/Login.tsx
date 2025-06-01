@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -36,10 +35,29 @@ const Login = () => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    console.log("Login data:", data);
-    // For demo purposes, simulate successful login and redirect to dashboard
-    navigate("/dashboard");
+  const onSubmit = async (data: FormValues) => {
+    try {
+      const response = await fetch("http://localhost:5000/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Login failed");
+      }
+
+      // Save token if your backend sends one
+      // localStorage.setItem("token", result.token);
+
+      navigate("/dashboard");
+    } catch (error: any) {
+      alert(error.message || "Something went wrong. Please try again.");
+    }
   };
 
   return (
