@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -23,9 +23,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+const ATTEMPTS_KEY = "loginAttempts";
+const LOCKOUT_KEY = "loginLockoutTime";
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [loginAttempts, setLoginAttempts] = useState(3);
+  const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -35,7 +42,65 @@ const Login = () => {
     },
   });
 
+  // On component mount, load attempts and lockout time from localStorage
+  useEffect(() => {
+    const storedAttempts = localStorage.getItem(ATTEMPTS_KEY);
+    const storedLockout = localStorage.getItem(LOCKOUT_KEY);
+
+    if (storedAttempts) {
+      setLoginAttempts(parseInt(storedAttempts, 10));
+    }
+
+    if (storedLockout) {
+      const lockoutDate = new Date(storedLockout);
+      if (lockoutDate > new Date()) {
+        setLockoutTime(lockoutDate);
+      } else {
+        // Expired lockout time - clear storage
+        localStorage.removeItem(LOCKOUT_KEY);
+        localStorage.removeItem(ATTEMPTS_KEY);
+      }
+    }
+  }, []);
+
+  // Save attempts and lockoutTime to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem(ATTEMPTS_KEY, loginAttempts.toString());
+  }, [loginAttempts]);
+
+  useEffect(() => {
+    if (lockoutTime) {
+      localStorage.setItem(LOCKOUT_KEY, lockoutTime.toISOString());
+    } else {
+      localStorage.removeItem(LOCKOUT_KEY);
+      localStorage.removeItem(ATTEMPTS_KEY);
+    }
+  }, [lockoutTime]);
+
+  // Countdown timer effect for lockout
+  useEffect(() => {
+    if (!lockoutTime) return;
+
+    timerRef.current = setInterval(() => {
+      if (new Date() >= lockoutTime) {
+        setLockoutTime(null);
+        setLoginAttempts(3);
+        setErrorMessage("");
+        if (timerRef.current) clearInterval(timerRef.current);
+      }
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [lockoutTime]);
+
   const onSubmit = async (data: FormValues) => {
+    if (lockoutTime) {
+      setErrorMessage("Too many failed attempts. Please wait before trying again.");
+      return;
+    }
+
     try {
       const response = await fetch("https://hss-backend.onrender.com/api/auth/login", {
         method: "POST",
@@ -48,17 +113,33 @@ const Login = () => {
       const result = await response.json();
 
       if (!response.ok) {
+        const attemptsLeft = loginAttempts - 1;
+
+        if (attemptsLeft <= 0) {
+          const timeoutDuration = 30 * 1000; // 30 seconds
+          setLockoutTime(new Date(Date.now() + timeoutDuration));
+          setErrorMessage("Too many failed login attempts. Please wait 30 seconds before retrying.");
+        } else {
+          setLoginAttempts(attemptsLeft);
+          setErrorMessage(`Invalid email or password. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`);
+        }
         throw new Error(result.message || "Login failed");
       }
 
-      // Save token if your backend sends one
+      // Successful login: reset attempts and error
+      setLoginAttempts(3);
+      setErrorMessage("");
+
+      // Save token if backend sends one
       // localStorage.setItem("token", result.token);
 
       navigate("/dashboard");
     } catch (error: any) {
-      alert(error.message || "Something went wrong. Please try again.");
+      console.error(error);
     }
   };
+
+  const lockoutSecondsLeft = lockoutTime ? Math.ceil((lockoutTime.getTime() - Date.now()) / 1000) : 0;
 
   return (
     <AuthCard
@@ -87,11 +168,12 @@ const Login = () => {
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter your email" 
-                    {...field} 
+                  <Input
+                    placeholder="Enter your email"
+                    {...field}
                     autoComplete="email"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
+                    disabled={!!lockoutTime}
                   />
                 </FormControl>
                 <FormMessage />
@@ -112,6 +194,7 @@ const Login = () => {
                       {...field}
                       autoComplete="current-password"
                       className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
+                      disabled={!!lockoutTime}
                     />
                     <Button
                       type="button"
@@ -119,6 +202,7 @@ const Login = () => {
                       size="icon"
                       className="absolute right-0 top-0 h-full px-3"
                       onClick={() => setShowPassword(!showPassword)}
+                      disabled={!!lockoutTime}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -132,12 +216,27 @@ const Login = () => {
               </FormItem>
             )}
           />
+
+          {errorMessage && (
+            <div className="text-red-600 text-center text-sm font-medium">{errorMessage}</div>
+          )}
+
+          {lockoutTime && (
+            <div className="text-red-600 text-center text-sm font-medium">
+              Please wait {lockoutSecondsLeft} second{lockoutSecondsLeft === 1 ? "" : "s"} before trying again.
+            </div>
+          )}
+
           <div className="text-sm text-right">
             <Link to="/forgot-password" className="text-hss-purple-vivid hover:underline">
               Forgot your password?
             </Link>
           </div>
-          <Button type="submit" className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90">
+          <Button
+            type="submit"
+            className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
+            disabled={!!lockoutTime}
+          >
             Login
           </Button>
         </form>
