@@ -12,13 +12,17 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8080', 'https://healthcaresecuresystem.netlify.app/'],
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:8080',
+    'https://healthcaresecuresystem.netlify.app'
+  ],
   credentials: true,
 }));
 
 app.use(express.json());
 
-// Request logging middleware
+// Logging
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`, req.body);
   next();
@@ -26,13 +30,10 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.get('/api/test', (req, res) => res.json({ message: 'Server is running!' }));
+app.get('/', (req, res) => res.send('Backend is running'));
 
-// Test route
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'Server is running!' });
-});
-
-// Error handling middleware
+// Error handling
 app.use((error, req, res, next) => {
   console.error('Server error:', error);
   res.status(500).json({ message: 'Internal server error' });
@@ -41,12 +42,12 @@ app.use((error, req, res, next) => {
 // MongoDB Connection
 mongoose.connect(MONGO_URI)
   .then(() => {
-    console.log(' MongoDB connected successfully');
+    console.log('MongoDB connected successfully');
     app.listen(PORT, () => {
-      console.log(` Server running on http://localhost:${PORT}`);
+      console.log(`Server running on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {
-    console.error(' MongoDB connection error:', err.message);
+    console.error('MongoDB connection error:', err.message);
     process.exit(1);
   });
