@@ -1,145 +1,220 @@
-import React from "react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import AuthCard from "@/components/auth/AuthCard";
+import { Eye, EyeOff } from "lucide-react";
 
-const formSchema = z.object({
-  full_name: z.string().min(1, "Full name is required"),
-  email: z.string().email("Invalid email"),
-  phone_number: z.string().min(1, "Phone number is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["admin", "staff"], { message: "Role is required" }),
-  department: z.string().min(1, "Department is required"),
-  biometric_hash: z.string().optional(),
-  device_fingerprint: z.string().optional(),
-  location_zone: z.string().optional()
-});
+const formSchema = z
+  .object({
+    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    role: z.string().min(1, { message: "Please select your role" }),
+    password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
-const Register: React.FC = () => {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<FormValues>({
-    resolver: zodResolver(formSchema)
-  });
-
+const Register = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  const onSubmit = async (data: FormValues) => {
-    try {
-      const response = await fetch("https://hss-backend.onrender.com/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      role: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        alert(result.msg || "Registration failed");
-        return;
-      }
-
-      alert("Registration successful!");
-      navigate("/login");
-    } catch (error) {
-      console.error("Error during registration:", error);
-      alert("Something went wrong. Please try again.");
-    }
+  const onSubmit = (data: FormValues) => {
+    console.log("Registration data:", data);
+    // For demo purposes, simulate successful registration and redirect to dashboard
+    navigate("/dashboard");
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white shadow-md rounded-md">
-      <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div>
-          <input
-            {...register("full_name")}
-            placeholder="Full Name"
-            className="w-full p-2 border rounded"
+    <AuthCard
+      cardTitle="Create an Account"
+      cardDescription="Register to access HSS Secure"
+      footer={
+        <div className="w-full flex flex-col gap-4 text-center text-sm text-muted-foreground">
+          <div>
+            Already have an account?{" "}
+            <Link to="/login" className="text-hss-purple-vivid hover:underline">
+              Login here
+            </Link>
+          </div>
+          <Link to="/" className="text-muted-foreground hover:text-foreground">
+            Return to home page
+          </Link>
+        </div>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Full Name</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Enter your full name" 
+                    {...field} 
+                    autoComplete="name"
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.full_name && <p className="text-red-500 text-sm">{errors.full_name.message}</p>}
-        </div>
-
-        <div>
-          <input
-            {...register("email")}
-            placeholder="Email"
-            className="w-full p-2 border rounded"
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Enter your email" 
+                    {...field} 
+                    autoComplete="email"
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
-        </div>
-
-        <div>
-          <input
-            {...register("phone_number")}
-            placeholder="Phone Number"
-            className="w-full p-2 border rounded"
+          <FormField
+            control={form.control}
+            name="role"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Role</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="border-border/50 bg-background/80 backdrop-blur-sm">
+                      <SelectValue placeholder="Select your role" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="nurse">Nurse</SelectItem>
+                    <SelectItem value="doctor">Doctor</SelectItem>
+                    <SelectItem value="technician">Technician</SelectItem>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="cleaner">Cleaner</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.phone_number && <p className="text-red-500 text-sm">{errors.phone_number.message}</p>}
-        </div>
-
-        <div>
-          <input
-            {...register("password")}
-            type="password"
-            placeholder="Password"
-            className="w-full p-2 border rounded"
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      {...field}
+                      autoComplete="new-password"
+                      className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
-        </div>
-
-        <div>
-          <select {...register("role")} className="w-full p-2 border rounded">
-            <option value="">Select Role</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
-          {errors.role && <p className="text-red-500 text-sm">{errors.role.message}</p>}
-        </div>
-
-        <div>
-          <input
-            {...register("department")}
-            placeholder="Department"
-            className="w-full p-2 border rounded"
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm Password</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      {...field}
+                      autoComplete="new-password"
+                      className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {errors.department && <p className="text-red-500 text-sm">{errors.department.message}</p>}
-        </div>
-
-        <div>
-          <input
-            {...register("biometric_hash")}
-            placeholder="Biometric Hash (optional)"
-            className="w-full p-2 border rounded"
-          />
-        </div>
-
-        <div>
-          <input
-            {...register("device_fingerprint")}
-            placeholder="Device Fingerprint (optional)"
-            className="w-full p-2 border rounded"
-          />
-        </div>
-
-        <div>
-          <input
-            {...register("location_zone")}
-            placeholder="Location Zone (optional)"
-            className="w-full p-2 border rounded"
-          />
-        </div>
-
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-          Register
-        </button>
-      </form>
-    </div>
+          <Button type="submit" className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90">
+            Register
+          </Button>
+        </form>
+      </Form>
+    </AuthCard>
   );
 };
 
