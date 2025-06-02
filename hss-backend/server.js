@@ -33,11 +33,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Enhanced request logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  if (Object.keys(req.body).length > 0) {
+  if (req.body && Object.keys(req.body).length > 0) {
     console.log('Request Body:', req.body);
   }
   next();
 });
+
 
 // API Routes
 app.use('/api/auth', authRoutes);
