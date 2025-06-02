@@ -8,7 +8,7 @@ const authRoutes = require('./routes/auth');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Enhanced CORS configuration
