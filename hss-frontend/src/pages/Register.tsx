@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -24,6 +24,52 @@ import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import axios from "axios";
+
+// Device fingerprinting function
+const generateDeviceFingerprint = (): string => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillText('Device fingerprint', 2, 2);
+  }
+  
+  const fingerprint = {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    screenResolution: `${screen.width}x${screen.height}`,
+    screenColorDepth: screen.colorDepth,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    canvas: canvas.toDataURL(),
+    plugins: Array.from(navigator.plugins).map(p => p.name).join(','),
+    cookieEnabled: navigator.cookieEnabled,
+    onlineStatus: navigator.onLine,
+    hardwareConcurrency: navigator.hardwareConcurrency || 0,
+  };
+  
+  return btoa(JSON.stringify(fingerprint)).slice(0, 64);
+};
+
+// IP and location detection
+const getLocationData = async (): Promise<{ ip: string; location: string }> => {
+  try {
+    const response = await axios.get('https://ipapi.co/json/');
+    const data = response.data;
+    
+    return {
+      ip: data.ip || 'unknown',
+      location: `${data.city || 'Unknown'}, ${data.region || 'Unknown'}, ${data.country_name || 'Unknown'}`
+    };
+  } catch (error) {
+    console.error('Failed to get location data:', error);
+    return {
+      ip: 'unknown',
+      location: 'Unknown Location'
+    };
+  }
+};
 
 // Define types directly in the component
 type ApiResponse = {
@@ -65,6 +111,11 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
+  const [locationData, setLocationData] = useState<{ ip: string; location: string }>({
+    ip: "",
+    location: ""
+  });
   const navigate = useNavigate();
 
   const form = useForm<FormValues>({
@@ -80,57 +131,76 @@ const Register = () => {
     },
   });
 
- const onSubmit = async (data: FormValues) => {
-  setIsLoading(true);
-  try {
-    const registrationData = {
-      full_name: data.name,
-      email: data.email,
-      phone_number: data.phoneNumber,
-      password: data.password,
-      role: data.role,
-      department: data.department,
-      biometric_hash: "", // Optional fields
-      device_fingerprint: "", // Optional fields
-      location_zone: "", // Optional fields
+  // Initialize device fingerprint and location on component mount
+  useEffect(() => {
+    const initializeSecurityData = async () => {
+      try {
+        // Generate device fingerprint
+        const fingerprint = generateDeviceFingerprint();
+        setDeviceFingerprint(fingerprint);
+
+        // Get location data
+        const location = await getLocationData();
+        setLocationData(location);
+      } catch (error) {
+        console.error('Failed to initialize security data:', error);
+      }
     };
 
-    // Make sure this matches your backend route
-    const response = await axios.post(
-      'http://localhost:5000/api/auth/register',
-      registrationData,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    initializeSecurityData();
+  }, []);
 
-    if (response.status === 201) {
-      toast({
-        title: "Registration Successful",
-        description: response.data.msg,
-      });
-      navigate("/login");
+  const onSubmit = async (data: FormValues) => {
+    setIsLoading(true);
+    try {
+      const registrationData: RegisterRequest = {
+        full_name: data.name,
+        email: data.email,
+        phone_number: data.phoneNumber,
+        password: data.password,
+        role: data.role,
+        department: data.department,
+        biometric_hash: "", // Optional - can be populated later
+        device_fingerprint: deviceFingerprint,
+        location_zone: locationData.location,
+      };
+
+      // Make sure this matches your backend route
+      const response = await axios.post(
+        'http://localhost:5000/api/auth/register',
+        registrationData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.status === 201) {
+        toast({
+          title: "Registration Successful",
+          description: response.data.msg || response.data.message || "Account created successfully",
+        });
+        navigate("/login");
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        toast({
+          title: "Registration Failed",
+          description: error.response?.data?.error || error.response?.data?.msg || "An error occurred",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: "An unexpected error occurred",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      toast({
-        title: "Registration Failed",
-        description: error.response?.data?.error || error.response?.data?.msg || "An error occurred",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Registration Failed",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <AuthCard
@@ -332,6 +402,16 @@ const Register = () => {
               </FormItem>
             )}
           />
+
+          {/* Security info display (optional - for debugging) */}
+          {(deviceFingerprint || locationData.location) && (
+            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+              <div>Device secured ✓</div>
+              {locationData.location && locationData.location !== "Unknown Location" && (
+                <div>Location: {locationData.location}</div>
+              )}
+            </div>
+          )}
           
           <Button 
             type="submit" 
