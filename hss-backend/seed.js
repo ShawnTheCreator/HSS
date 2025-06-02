@@ -24,25 +24,25 @@ async function seedAdmin() {
     console.log('Database name:', mongoose.connection.name);
 
     const existingAdmin = await User.findOne({ email: 'admin@hss.com' });
+    const desiredPassword = 'Admin@123';
+
     if (existingAdmin) {
       console.log('Admin already exists.');
-      console.log('Existing admin:', {
-        email: existingAdmin.email,
-        full_name: existingAdmin.full_name,
-        role: existingAdmin.role,
-        id: existingAdmin._id
-      });
-      
-      // Test password verification
-      const isPasswordValid = await bcrypt.compare('Admin@123', existingAdmin.password);
-      console.log('Password verification test:', isPasswordValid);
-      
+      console.log('Updating password for existing admin...');
+
+      const hashedPassword = await bcrypt.hash(desiredPassword, 10);
+      existingAdmin.password = hashedPassword;
+      existingAdmin.updated_at = new Date();
+
+      await existingAdmin.save();
+      console.log('✅ Admin password updated successfully.');
+
       await mongoose.connection.close();
       process.exit(0);
     }
 
     console.log('Creating new admin user...');
-    const hashedPassword = await bcrypt.hash('Admin@123', 10);
+    const hashedPassword = await bcrypt.hash(desiredPassword, 10);
     console.log('Generated hash for Admin@123');
 
     const adminUser = new User({
