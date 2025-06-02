@@ -167,7 +167,7 @@ const Register = () => {
 
       // Make sure this matches your backend route
       const response = await axios.post(
-        'http://localhost:5000/api/auth/register',
+        'https://hss-backend.onrender.com/api/auth/register',
         registrationData,
         {
           headers: {
