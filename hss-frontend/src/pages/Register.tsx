@@ -80,52 +80,57 @@ const Register = () => {
     },
   });
 
-  const onSubmit = async (data: FormValues) => {
-    setIsLoading(true);
-    try {
-      const registrationData: RegisterRequest = {
-        full_name: data.name,
-        email: data.email,
-        phone_number: data.phoneNumber,
-        password: data.password,
-        role: data.role,
-        department: data.department,
-        biometric_hash: "",
-        device_fingerprint: "",
-        location_zone: "",
-      };
+ const onSubmit = async (data: FormValues) => {
+  setIsLoading(true);
+  try {
+    const registrationData = {
+      full_name: data.name,
+      email: data.email,
+      phone_number: data.phoneNumber,
+      password: data.password,
+      role: data.role,
+      department: data.department,
+      biometric_hash: "", // Optional fields
+      device_fingerprint: "", // Optional fields
+      location_zone: "", // Optional fields
+    };
 
-      const response = await axios.post<ApiResponse>(
-        "/api/auth/register", 
-        registrationData
-      );
-
-      if (response.data.success) {
-        toast({
-          title: "Registration Successful",
-          description: "Your account has been created successfully",
-        });
-        navigate("/login");
-      } else {
-        throw new Error(response.data.message || "Registration failed");
+    // Make sure this matches your backend route
+    const response = await axios.post(
+      'http://localhost:5000/api/auth/register',
+      registrationData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }
-    } catch (error) {
-      let errorMessage = "An unexpected error occurred";
-      if (axios.isAxiosError(error)) {
-        errorMessage = error.response?.data?.msg || error.response?.data?.error || error.message;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
+    );
 
+    if (response.status === 201) {
+      toast({
+        title: "Registration Successful",
+        description: response.data.msg,
+      });
+      navigate("/login");
+    }
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
       toast({
         title: "Registration Failed",
-        description: errorMessage,
+        description: error.response?.data?.error || error.response?.data?.msg || "An error occurred",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: "Registration Failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <AuthCard
