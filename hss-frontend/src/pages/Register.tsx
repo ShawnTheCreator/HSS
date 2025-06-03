@@ -4,7 +4,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import {
   Form,
   FormControl,
@@ -110,7 +109,7 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Replace with your actual reCAPTCHA site key
+// Replace with your actual reCAPTCHA v2 site key
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const Register = () => {
@@ -158,9 +157,12 @@ const Register = () => {
     initializeSecurityData();
   }, []);
 
-  // Handle reCAPTCHA change
+  // Handle reCAPTCHA change (v2)
   const handleRecaptchaChange = (token: string | null) => {
     setRecaptchaToken(token);
+    if (token) {
+      console.log('reCAPTCHA token received:', token);
+    }
   };
 
   // Handle reCAPTCHA expiration
@@ -169,6 +171,16 @@ const Register = () => {
     toast({
       title: "reCAPTCHA Expired",
       description: "Please complete the reCAPTCHA again",
+      variant: "destructive",
+    });
+  };
+
+  // Handle reCAPTCHA error
+  const handleRecaptchaError = () => {
+    setRecaptchaToken(null);
+    toast({
+      title: "reCAPTCHA Error",
+      description: "There was an error loading reCAPTCHA. Please try again.",
       variant: "destructive",
     });
   };
@@ -241,20 +253,6 @@ const Register = () => {
       setIsLoading(false);
     }
   };
-
-  const { executeRecaptcha } = useGoogleReCaptcha();
-
-const handleFormSubmit = async () => {
-  if (!executeRecaptcha) {
-    console.error("reCAPTCHA not ready");
-    return;
-  }
-
-  const token = await executeRecaptcha("register"); // custom action
-  console.log("reCAPTCHA token:", token);
-
-  // Send `token` to your backend for verification
-};
 
   return (
     <AuthCard
@@ -457,7 +455,18 @@ const handleFormSubmit = async () => {
             )}
           />
 
-          
+          {/* reCAPTCHA v2 Component */}
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={RECAPTCHA_SITE_KEY}
+              onChange={handleRecaptchaChange}
+              onExpired={handleRecaptchaExpired}
+              onError={handleRecaptchaError}
+              theme="light" // or "dark"
+              size="normal" // or "compact"
+            />
+          </div>
 
           {/* Security info display (optional - for debugging) */}
           {(deviceFingerprint || locationData.location) && (
