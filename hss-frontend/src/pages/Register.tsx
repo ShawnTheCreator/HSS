@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import {
   Form,
   FormControl,
@@ -110,7 +111,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>;
 
 // Replace with your actual reCAPTCHA site key
-const RECAPTCHA_SITE_KEY = "6Lc2hFQrAAAAAF_Ky0NBQQHkjjm0W0dWWBHWsa1L";
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -240,6 +241,20 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+const handleFormSubmit = async () => {
+  if (!executeRecaptcha) {
+    console.error("reCAPTCHA not ready");
+    return;
+  }
+
+  const token = await executeRecaptcha("register"); // custom action
+  console.log("reCAPTCHA token:", token);
+
+  // Send `token` to your backend for verification
+};
 
   return (
     <AuthCard
@@ -442,16 +457,7 @@ const Register = () => {
             )}
           />
 
-          {/* reCAPTCHA */}
-          <div className="flex justify-center">
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
-              onChange={handleRecaptchaChange}
-              onExpired={handleRecaptchaExpired}
-              theme="light" // or "dark" to match your theme
-            />
-          </div>
+          
 
           {/* Security info display (optional - for debugging) */}
           {(deviceFingerprint || locationData.location) && (
