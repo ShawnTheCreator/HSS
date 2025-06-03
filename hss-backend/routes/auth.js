@@ -34,13 +34,14 @@ router.post('/register', async (req, res) => {
       biometric_hash,
       device_fingerprint,
       location_zone,
+      isApproved: false, // user must be approved by admin
       created_at: new Date(),
       updated_at: new Date()
     });
 
     await newUser.save();
 
-    res.status(201).json({ msg: 'User registered successfully' });
+    res.status(201).json({ msg: 'User registered successfully. Awaiting admin approval.' });
   } catch (err) {
     console.error('Registration error:', err);
     res.status(500).json({ error: 'Server error during registration' });
@@ -54,7 +55,6 @@ router.post('/login', async (req, res) => {
 
     console.log('[LOGIN ATTEMPT]');
     console.log('Email:', email);
-    console.log('Password:', password);
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -69,6 +69,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ msg: 'Invalid email or password' });
     }
 
+    if (!user.isApproved) {
+      return res.status(403).json({ msg: 'Account not yet approved by admin' });
+    }
+
     if (device_fingerprint && user.device_fingerprint !== device_fingerprint) {
       console.log('Fingerprint mismatch:', device_fingerprint, '!=', user.device_fingerprint);
       return res.status(403).json({ msg: 'Unrecognized device fingerprint' });
@@ -76,7 +80,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
-      process.env.JWT_SECRET || 'default_secret', // fallback
+      process.env.JWT_SECRET || 'default_secret',
       { expiresIn: '1h' }
     );
 
