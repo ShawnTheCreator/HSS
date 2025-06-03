@@ -51,6 +51,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    // 2FA fields
+    twoFA_code: {
+      type: String,
+      required: false,
+    },
+    twoFA_expires: {
+      type: Date,
+      required: false,
+    },
   },
   { timestamps: true }
 );
