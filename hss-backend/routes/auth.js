@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Admin email (could also be an array for multiple admins)
-const adminEmail = process.env.ADMIN_EMAIL;
+const adminEmail = process.env.ADMIN_EMAIL || 'admin@yourdomain.com';
 
 // Register a staff user
 router.post('/register', async (req, res) => {
@@ -38,7 +38,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'reCAPTCHA verification required' });
     }
 
-    
+    // Verify reCAPTCHA token if provided
     if (recaptcha_token) {
       const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptcha_token}`;
       const recaptchaResponse = await fetch(verificationUrl);
@@ -211,111 +211,6 @@ router.post('/login', async (req, res) => {
     console.error('Login error:', err);
     res.status(500).json({ 
       error: 'Server error during login',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
-
-// Send 2FA Code
-router.post('/send-2fa', async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    // 1. Verify user exists in MongoDB
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // 2. Generate 2FA code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    // 3. Save code to user in database (with expiration)
-    user.twoFactorCode = code;
-    user.twoFactorExpires = new Date(Date.now() + 15*60*1000); // 15 mins
-    await user.save();
-
-    // 4. Send email
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Your 2FA Verification Code',
-      html: `
-        <h2>Your Security Code</h2>
-        <p>Your verification code is: <strong>${code}</strong></p>
-        <p>This code expires in 15 minutes.</p>
-        <p>If you didn't request this, please secure your account.</p>
-      `
-    };
-
-    await transporter.sendMail(mailOptions);
-    console.log(`2FA code sent to ${email}`);
-
-    res.json({ 
-      success: true,
-      message: '2FA code sent',
-      expiresIn: 900 // 15 minutes in seconds
-    });
-  } catch (err) {
-    console.error('2FA error:', err);
-    res.status(500).json({ 
-      error: 'Failed to send 2FA code',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
-  }
-});
-
-// Verify 2FA Code
-router.post('/verify-2fa', async (req, res) => {
-  try {
-    const { email, code } = req.body;
-
-    // 1. Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // 2. Check if code matches and isn't expired
-    if (!user.twoFactorCode || user.twoFactorCode !== code) {
-      return res.status(400).json({ error: 'Invalid verification code' });
-    }
-
-    if (new Date() > user.twoFactorExpires) {
-      return res.status(400).json({ error: 'Verification code has expired' });
-    }
-
-    // 3. Clear the code after successful verification
-    user.twoFactorCode = undefined;
-    user.twoFactorExpires = undefined;
-    await user.save();
-
-    // 4. Generate final auth token
-    const token = jwt.sign(
-      { 
-        id: user._id, 
-        role: user.role,
-        email: user.email,
-        twoFactorVerified: true // Mark as 2FA verified
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
-    );
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (err) {
-    console.error('2FA verification error:', err);
-    res.status(500).json({ 
-      error: 'Failed to verify 2FA code',
       details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
