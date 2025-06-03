@@ -13,13 +13,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -84,8 +77,6 @@ type RegisterRequest = {
   email: string;
   phone_number: string;
   password: string;
-  role: string;
-  department: string;
   biometric_hash?: string;
   device_fingerprint?: string;
   location_zone?: string;
@@ -97,8 +88,6 @@ const formSchema = z
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Please enter a valid email address" }),
     phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
-    role: z.string().min(1, { message: "Please select your role" }),
-    department: z.string().min(1, { message: "Please select your department" }),
     password: z
       .string()
       .min(8, { message: "Password must be at least 8 characters" })
@@ -142,8 +131,6 @@ const Register = () => {
       name: "",
       email: "",
       phoneNumber: "",
-      role: "",
-      department: "",
       password: "",
       confirmPassword: "",
     },
@@ -245,8 +232,6 @@ const Register = () => {
         email: data.email,
         phone_number: data.phoneNumber,
         password: data.password,
-        role: data.role,
-        department: data.department,
         biometric_hash: "", // Optional - can be populated later
         device_fingerprint: deviceFingerprint,
         location_zone: locationData.location,
@@ -444,60 +429,6 @@ const Register = () => {
               </FormItem>
             )}
           />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="border-border/50 bg-background/80 backdrop-blur-sm">
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="nurse">Nurse</SelectItem>
-                      <SelectItem value="doctor">Doctor</SelectItem>
-                      <SelectItem value="technician">Technician</SelectItem>
-                      <SelectItem value="admin">Administrator</SelectItem>
-                      <SelectItem value="cleaner">Cleaner</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="department"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Department</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="border-border/50 bg-background/80 backdrop-blur-sm">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="emergency">Emergency</SelectItem>
-                      <SelectItem value="cardiology">Cardiology</SelectItem>
-                      <SelectItem value="pediatrics">Pediatrics</SelectItem>
-                      <SelectItem value="surgery">Surgery</SelectItem>
-                      <SelectItem value="radiology">Radiology</SelectItem>
-                      <SelectItem value="pharmacy">Pharmacy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
           
           <FormField
             control={form.control}
