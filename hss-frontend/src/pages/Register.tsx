@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -24,6 +24,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import axios from "axios";
+import ReCAPTCHA from "react-google-recaptcha";
 
 // Device fingerprinting function
 const generateDeviceFingerprint = (): string => {
@@ -88,6 +89,7 @@ type RegisterRequest = {
   biometric_hash?: string;
   device_fingerprint?: string;
   location_zone?: string;
+  recaptcha_token?: string;
 };
 
 const formSchema = z
@@ -107,6 +109,9 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+// Replace with your actual reCAPTCHA site key
+const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || "your-recaptcha-site-key";
+
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -116,6 +121,8 @@ const Register = () => {
     ip: "",
     location: ""
   });
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
 
   const form = useForm<FormValues>({
@@ -150,7 +157,32 @@ const Register = () => {
     initializeSecurityData();
   }, []);
 
+  // Handle reCAPTCHA change
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+  };
+
+  // Handle reCAPTCHA expiration
+  const handleRecaptchaExpired = () => {
+    setRecaptchaToken(null);
+    toast({
+      title: "reCAPTCHA Expired",
+      description: "Please complete the reCAPTCHA again",
+      variant: "destructive",
+    });
+  };
+
   const onSubmit = async (data: FormValues) => {
+    // Check if reCAPTCHA is completed
+    if (!recaptchaToken) {
+      toast({
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const registrationData: RegisterRequest = {
@@ -163,6 +195,7 @@ const Register = () => {
         biometric_hash: "", // Optional - can be populated later
         device_fingerprint: deviceFingerprint,
         location_zone: locationData.location,
+        recaptcha_token: recaptchaToken,
       };
 
       // Make sure this matches your backend route
@@ -184,6 +217,12 @@ const Register = () => {
         navigate("/login");
       }
     } catch (error) {
+      // Reset reCAPTCHA on error
+      if (recaptchaRef.current) {
+        recaptchaRef.current.reset();
+      }
+      setRecaptchaToken(null);
+
       if (axios.isAxiosError(error)) {
         toast({
           title: "Registration Failed",
@@ -403,6 +442,17 @@ const Register = () => {
             )}
           />
 
+          {/* reCAPTCHA */}
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={RECAPTCHA_SITE_KEY}
+              onChange={handleRecaptchaChange}
+              onExpired={handleRecaptchaExpired}
+              theme="light" // or "dark" to match your theme
+            />
+          </div>
+
           {/* Security info display (optional - for debugging) */}
           {(deviceFingerprint || locationData.location) && (
             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
@@ -416,7 +466,7 @@ const Register = () => {
           <Button 
             type="submit" 
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={isLoading}
+            disabled={isLoading || !recaptchaToken}
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>
