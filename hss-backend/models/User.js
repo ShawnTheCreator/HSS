@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-
 const userSchema = new mongoose.Schema({
   full_name: { type: String, required: true },
   email: { type: String, unique: true, required: true },
@@ -10,6 +8,5 @@ const userSchema = new mongoose.Schema({
   biometric_hash: String,
   device_fingerprint: String,
   location_zone: String,
+  isApproved: { type: Boolean, default: false }, // <-- NEW
 }, { timestamps: true });
-
-module.exports = mongoose.model('User', userSchema);
