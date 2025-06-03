@@ -110,7 +110,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>;
 
 // Replace with your actual reCAPTCHA site key
-const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || "your-recaptcha-site-key";
+const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || "6Lc2hFQrAAAAAF_Ky0NBQQHkjjm0W0dWWBHWsa1L";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -442,7 +442,16 @@ const Register = () => {
             )}
           />
 
-          
+          {/* reCAPTCHA */}
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={RECAPTCHA_SITE_KEY}
+              onChange={handleRecaptchaChange}
+              onExpired={handleRecaptchaExpired}
+              theme="light" // or "dark" to match your theme
+            />
+          </div>
 
           {/* Security info display (optional - for debugging) */}
           {(deviceFingerprint || locationData.location) && (
