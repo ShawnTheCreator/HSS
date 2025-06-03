@@ -128,6 +128,11 @@ const Register = () => {
     location: ""
   });
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  
+  // NEW: State to store the email after successful registration
+  const [registeredEmail, setRegisteredEmail] = useState<string>("");
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
 
@@ -191,6 +196,37 @@ const Register = () => {
     });
   };
 
+  // NEW: Function to send 2FA code
+  const send2FACode = async (email: string) => {
+    try {
+      const response = await axios.post(
+        'https://hss-backend.onrender.com/api/auth/send-2fa',
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.success) {
+        toast({
+          title: "2FA Code Sent",
+          description: "Please check your email for the verification code",
+        });
+        // You can navigate to a 2FA verification page here
+        // navigate("/verify-2fa", { state: { email } });
+      }
+    } catch (error) {
+      console.error('Error sending 2FA code:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send 2FA code. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onSubmit = async (data: FormValues) => {
     // Check if reCAPTCHA is completed
     if (!recaptchaToken) {
@@ -229,11 +265,37 @@ const Register = () => {
       );
 
       if (response.status === 201) {
+        // EXTRACT THE EMAIL HERE after successful registration
+        setRegisteredEmail(data.email);
+        setShowEmailConfirmation(true);
+        
+        console.log('✅ Registration successful! Email captured:', data.email);
+        
+        // You can now use the email for various purposes:
+        // 1. Store it in localStorage/sessionStorage
+        localStorage.setItem('registeredEmail', data.email);
+        
+        // 2. Pass it to parent component via callback (if this is a child component)
+        // if (onEmailCaptured) {
+        //   onEmailCaptured(data.email);
+        // }
+        
+        // 3. Store it in global state (Redux, Zustand, etc.)
+        // dispatch(setUserEmail(data.email));
+        
+        // 4. Use it immediately for 2FA or other operations
+        // Uncomment the line below if you want to automatically send 2FA
+        // await send2FACode(data.email);
+
         toast({
           title: "Registration Successful",
           description: response.data.msg || response.data.message || "Account created successfully",
         });
-        navigate("/login");
+        
+        // Navigate after a short delay to show confirmation
+        setTimeout(() => {
+          navigate("/login");
+        }, 2000);
       }
     } catch (error) {
       // Reset reCAPTCHA on error
@@ -259,6 +321,52 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  // Show email confirmation if registration was successful
+  if (showEmailConfirmation && registeredEmail) {
+    return (
+      <AuthCard
+        cardTitle="Registration Successful!"
+        cardDescription="Your account has been created"
+        footer={
+          <div className="w-full flex flex-col gap-4 text-center text-sm text-muted-foreground">
+            <Link to="/login" className="text-hss-purple-vivid hover:underline">
+              Continue to Login
+            </Link>
+          </div>
+        }
+      >
+        <div className="space-y-4 text-center">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="font-semibold text-green-800">Account Created Successfully!</h3>
+            <p className="text-green-600 mt-2">
+              Registration email sent to: <strong>{registeredEmail}</strong>
+            </p>
+            <p className="text-sm text-green-600 mt-1">
+              Please wait for admin approval before logging in.
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <Button 
+              onClick={() => send2FACode(registeredEmail)}
+              variant="outline"
+              className="w-full"
+            >
+              Send 2FA Code (Optional)
+            </Button>
+            
+            <Button 
+              onClick={() => navigate("/login")}
+              className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      </AuthCard>
+    );
+  }
 
   return (
     <AuthCard
