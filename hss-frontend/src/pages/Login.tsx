@@ -15,6 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
@@ -26,13 +28,18 @@ type FormValues = z.infer<typeof formSchema>;
 const ATTEMPTS_KEY = "loginAttempts";
 const LOCKOUT_KEY = "loginLockoutTime";
 
+// Replace with your actual reCAPTCHA v2 site key
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(3);
   const [lockoutTime, setLockoutTime] = useState<Date | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -86,6 +93,11 @@ const Login = () => {
         setLockoutTime(null);
         setLoginAttempts(3);
         setErrorMessage("");
+        // Reset reCAPTCHA when lockout expires
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset();
+        }
+        setRecaptchaToken(null);
         if (timerRef.current) clearInterval(timerRef.current);
       }
     }, 1000);
@@ -95,9 +107,47 @@ const Login = () => {
     };
   }, [lockoutTime]);
 
+  // Handle reCAPTCHA change (v2)
+  const handleRecaptchaChange = (token: string | null) => {
+    setRecaptchaToken(token);
+    if (token) {
+      console.log('reCAPTCHA token received:', token);
+    }
+  };
+
+  // Handle reCAPTCHA expiration
+  const handleRecaptchaExpired = () => {
+    setRecaptchaToken(null);
+    toast({
+      title: "reCAPTCHA Expired",
+      description: "Please complete the reCAPTCHA again",
+      variant: "destructive",
+    });
+  };
+
+  // Handle reCAPTCHA error
+  const handleRecaptchaError = () => {
+    setRecaptchaToken(null);
+    toast({
+      title: "reCAPTCHA Error",
+      description: "There was an error loading reCAPTCHA. Please try again.",
+      variant: "destructive",
+    });
+  };
+
   const onSubmit = async (data: FormValues) => {
     if (lockoutTime) {
       setErrorMessage("Too many failed attempts. Please wait before trying again.");
+      return;
+    }
+
+    // Check if reCAPTCHA is completed
+    if (!recaptchaToken) {
+      toast({
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -107,12 +157,21 @@ const Login = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          recaptcha_token: recaptchaToken,
+        }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
+        // Reset reCAPTCHA on failed login attempt
+        if (recaptchaRef.current) {
+          recaptchaRef.current.reset();
+        }
+        setRecaptchaToken(null);
+
         const attemptsLeft = loginAttempts - 1;
 
         if (attemptsLeft <= 0) {
@@ -129,9 +188,17 @@ const Login = () => {
       // Successful login: reset attempts and error
       setLoginAttempts(3);
       setErrorMessage("");
+      setRecaptchaToken(null);
 
       // Save token if backend sends one
-      // localStorage.setItem("token", result.token);
+      if (result.token) {
+        localStorage.setItem("token", result.token);
+      }
+
+      toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+      });
 
       navigate("/dashboard");
     } catch (error: any) {
@@ -217,6 +284,19 @@ const Login = () => {
             )}
           />
 
+          {/* reCAPTCHA v2 Component */}
+          <div className="flex justify-center">
+            <ReCAPTCHA
+              ref={recaptchaRef}
+              sitekey={RECAPTCHA_SITE_KEY}
+              onChange={handleRecaptchaChange}
+              onExpired={handleRecaptchaExpired}
+              onError={handleRecaptchaError}
+              theme="light" // or "dark"
+              size="normal" // or "compact"
+            />
+          </div>
+
           {errorMessage && (
             <div className="text-red-600 text-center text-sm font-medium">{errorMessage}</div>
           )}
@@ -235,7 +315,7 @@ const Login = () => {
           <Button
             type="submit"
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={!!lockoutTime}
+            disabled={!!lockoutTime || !recaptchaToken}
           >
             Login
           </Button>
