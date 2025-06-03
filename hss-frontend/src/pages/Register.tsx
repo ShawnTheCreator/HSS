@@ -99,7 +99,13 @@ const formSchema = z
     phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
     role: z.string().min(1, { message: "Please select your role" }),
     department: z.string().min(1, { message: "Please select your department" }),
-    password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+    password: z
+      .string()
+      .min(8, { message: "Password must be at least 8 characters" })
+      .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+      .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+      .regex(/\d/, { message: "Password must contain at least one number" })
+      .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -416,6 +422,9 @@ const Register = () => {
                   </div>
                 </FormControl>
                 <FormMessage />
+                <div className="text-xs text-muted-foreground mt-1">
+                  Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                </div>
               </FormItem>
             )}
           />
