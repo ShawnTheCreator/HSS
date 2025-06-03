@@ -110,7 +110,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>;
 
 // Replace with your actual reCAPTCHA site key
-const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || "6Lc2hFQrAAAAAF_Ky0NBQQHkjjm0W0dWWBHWsa1L";
+const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || "6Lc2hFQrAAAAAGZ5HUZwYoEArx0_8TP27jdB8g-k";
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
