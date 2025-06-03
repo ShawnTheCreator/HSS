@@ -442,16 +442,7 @@ const Register = () => {
             )}
           />
 
-          {/* reCAPTCHA */}
-          <div className="flex justify-center">
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
-              onChange={handleRecaptchaChange}
-              onExpired={handleRecaptchaExpired}
-              theme="light" // or "dark" to match your theme
-            />
-          </div>
+          
 
           {/* Security info display (optional - for debugging) */}
           {(deviceFingerprint || locationData.location) && (
