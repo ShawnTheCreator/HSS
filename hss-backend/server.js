@@ -100,11 +100,10 @@ app.use((error, req, res, next) => {
 // Database connection with retry logic
 const connectWithRetry = () => {
   mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000
-  })
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000
+})
+
   .then(() => console.log('✅ MongoDB connected successfully'))
   .catch(err => {
     console.error('❌ MongoDB connection error:', err.message);
