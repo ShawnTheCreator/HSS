@@ -13,16 +13,16 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Enhanced CORS configuration
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:8080',
+  'https://healthcaresecuresystem.netlify.app'
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || /netlify\.app$/.test(origin)) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error(`❌ Not allowed by CORS: ${origin}`));
+      console.warn(`Blocked by CORS: ${origin}`);
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
