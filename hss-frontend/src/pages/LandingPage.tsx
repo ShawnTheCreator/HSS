@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
             {/* Links */}
             <div className="flex items-center space-x-4">
               <Link
-                to="/home"
+                to="/contactform"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 Contact Us
