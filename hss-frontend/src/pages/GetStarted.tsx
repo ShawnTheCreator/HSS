@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from 'react-router-dom';
 
 
 const GetStarted: React.FC = () => {
@@ -626,12 +627,12 @@ const GetStarted: React.FC = () => {
             <p className="mt-4 text-lg">
               Sign up today try out the demo 
             </p>
-            <a
-              href="/home"
+            <Link
+              to="/home"
               className="mt-6 inline-block px-8 py-3 bg-white text-purple-600 font-semibold rounded-md hover:bg-gray-100 transition-colors"
             >
               Demo
-            </a>
+            </Link>
           </div>
         </section>
 
