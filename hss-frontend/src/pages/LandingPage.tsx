@@ -18,18 +18,18 @@ const LandingPage: React.FC = () => {
 
             {/* Links */}
             <div className="flex items-center space-x-4">
-              <a
-                href="/login"
+              <Link
+                to="/login"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
               >
-                Login
-              </a>
-              <a
-                href="/register"
+                Contact Us
+              </Link>
+              <Link
+                to="/home"
                 className="px-4 py-2 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
               >
-                Register
-              </a>
+                Demo
+              </Link>
             </div>
           </div>
         </div>
