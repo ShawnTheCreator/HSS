@@ -1,10 +1,8 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { useForm, ValidationError } from "@formspree/react";
 
-const ContactForm: React.FC = () => {
-  const [state, handleSubmit] = useForm("mrbkbgvy");
+const ContactForm = () => {
+  const [state, handleSubmit] = useForm("mrbkbgvy"); 
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -12,7 +10,7 @@ const ContactForm: React.FC = () => {
     message: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -20,7 +18,7 @@ const ContactForm: React.FC = () => {
     }));
   };
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     await handleSubmit(e);
     if (state.succeeded) {
@@ -45,18 +43,18 @@ const ContactForm: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link
-                to="/"
+              <a
+                href="/"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 Home
-              </Link>
-              <Link
-                to="/home"
+              </a>
+              <a
+                href="/home"
                 className="px-4 py-2 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
               >
                 Demo
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -65,12 +63,7 @@ const ContactForm: React.FC = () => {
       {/* Main Content */}
       <div className="pt-16 pb-12">
         {/* Hero Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="relative pt-12 pb-8"
-        >
+        <section className="relative pt-12 pb-8">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
               Contact <span className="text-purple-600">Us</span>
@@ -79,23 +72,14 @@ const ContactForm: React.FC = () => {
               Have questions or need support? Our team is here to help you with anything you need.
             </p>
           </div>
-        </motion.section>
+        </section>
 
         {/* Contact Form Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 mt-8"
-        >
+        <section className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="p-6 sm:p-8">
               {state.succeeded ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-8"
-                >
+                <div className="text-center py-8">
                   <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
                     <svg
                       className="h-6 w-6 text-green-600"
@@ -112,7 +96,7 @@ const ContactForm: React.FC = () => {
                     </svg>
                   </div>
                   <h3 className="mt-3 text-lg font-medium text-gray-900">
-                    Message Sent!
+                    Thanks for joining!
                   </h3>
                   <p className="mt-2 text-sm text-gray-500">
                     Thank you for contacting us. We'll get back to you soon.
@@ -125,7 +109,7 @@ const ContactForm: React.FC = () => {
                       Send Another Message
                     </button>
                   </div>
-                </motion.div>
+                </div>
               ) : (
                 <form onSubmit={onSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -133,17 +117,15 @@ const ContactForm: React.FC = () => {
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                         Full Name
                       </label>
-                      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                        <input
-                          type="text"
-                          id="name"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleChange}
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                        />
-                      </motion.div>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                      />
                       <ValidationError prefix="Name" field="name" errors={state.errors} />
                     </div>
 
@@ -151,17 +133,15 @@ const ContactForm: React.FC = () => {
                       <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                         Email Address
                       </label>
-                      <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleChange}
-                          required
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                        />
-                      </motion.div>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        required
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                      />
                       <ValidationError prefix="Email" field="email" errors={state.errors} />
                     </div>
                   </div>
@@ -170,17 +150,15 @@ const ContactForm: React.FC = () => {
                     <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
                       Subject
                     </label>
-                    <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                      <input
-                        type="text"
-                        id="subject"
-                        name="subject"
-                        value={formData.subject}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                      />
-                    </motion.div>
+                    <input
+                      type="text"
+                      id="subject"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      required
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
                     <ValidationError prefix="Subject" field="subject" errors={state.errors} />
                   </div>
 
@@ -188,17 +166,15 @@ const ContactForm: React.FC = () => {
                     <label htmlFor="message" className="block text-sm font-medium text-gray-700">
                       Message
                     </label>
-                    <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
-                      <textarea
-                        id="message"
-                        name="message"
-                        rows={4}
-                        value={formData.message}
-                        onChange={handleChange}
-                        required
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                      />
-                    </motion.div>
+                    <textarea
+                      id="message"
+                      name="message"
+                      rows={4}
+                      value={formData.message}
+                      onChange={handleChange}
+                      required
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
                     <ValidationError prefix="Message" field="message" errors={state.errors} />
                   </div>
 
@@ -219,10 +195,8 @@ const ContactForm: React.FC = () => {
                   </div>
 
                   <div>
-                    <motion.button
+                    <button
                       type="submit"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
                       disabled={state.submitting}
                       className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${state.submitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
@@ -235,9 +209,9 @@ const ContactForm: React.FC = () => {
                           Sending...
                         </>
                       ) : (
-                        'Send Message'
+                        'Submit'
                       )}
-                    </motion.button>
+                    </button>
                   </div>
                 </form>
               )}
@@ -271,15 +245,10 @@ const ContactForm: React.FC = () => {
               </div>
             </div>
           </div>
-        </motion.section>
+        </section>
 
         {/* Contact Info Section */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12"
-        >
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-200">
               <div className="p-6 text-center">
@@ -300,7 +269,7 @@ const ContactForm: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">Email</h3>
-                <p className="mt-2 text-sm text-gray-500">support@hsssecure.com</p>
+                <p className="mt-2 text-sm text-gray-500">maincontacthss@gmail.com</p>
                 <p className="mt-1 text-sm text-gray-500">We'll reply within 24 hours</p>
               </div>
 
@@ -312,12 +281,12 @@ const ContactForm: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">Office</h3>
-                <p className="mt-2 text-sm text-gray-500">123 Healthcare St</p>
-                <p className="mt-1 text-sm text-gray-500">Johannesburg, 2000</p>
+                <p className="mt-2 text-sm text-gray-500">44 Alstain Road Midrand</p>
+                <p className="mt-1 text-sm text-gray-500">Johannesburg, 1685</p>
               </div>
             </div>
           </div>
-        </motion.section>
+        </section>
       </div>
 
       {/* Footer */}
