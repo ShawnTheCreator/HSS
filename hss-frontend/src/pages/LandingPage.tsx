@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from 'react-router-dom';
 
 
 const LandingPage: React.FC = () => {
@@ -53,12 +54,12 @@ const LandingPage: React.FC = () => {
                 efficient, and user-friendly management system.
               </p>
               <div className="mt-8 flex space-x-4">
-                <a
-                  href="#get-started"
-                  className="px-6 py-3 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
-                >
-                  Get Started
-                </a>
+                <Link
+  to="/get-started"
+  className="px-6 py-3 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
+>
+  Get Started
+</Link>
                 <a
                   href="#learn-more"
                   className="px-6 py-3 border-2 border-gray-800 text-gray-800 font-medium rounded-md hover:bg-gray-100 transition-colors"
