@@ -13,6 +13,7 @@ import Staff from "./pages/Staff";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import GetStarted from "./pages/GetStarted";
+import ContactForm from "./pages/Contact"
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<LandingPage />} />
           <Route path="/getstarted" element={<GetStarted />} />
           <Route path="/home" element={<Home />} />
+          <Route path="/contactform" element={<ContactForm />}/>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
