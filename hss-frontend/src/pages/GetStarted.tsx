@@ -255,7 +255,7 @@ const GetStarted: React.FC = () => {
                 <h3 className="text-xl font-semibold text-gray-800">Basic</h3>
                 <p className="mt-2 text-gray-600">For small clinics and practices</p>
                 <p className="mt-4 text-4xl font-extrabold text-gray-900">
-                  $49<span className="text-xl font-medium text-gray-600">/mo</span>
+                 R880.99<span className="text-xl font-medium text-gray-600">/mo</span>
                 </p>
                 <ul className="mt-6 space-y-3 text-left text-gray-600 flex-1">
                   <li className="flex items-center">
@@ -311,7 +311,7 @@ const GetStarted: React.FC = () => {
                 <h3 className="text-xl font-semibold text-gray-800">Pro</h3>
                 <p className="mt-2 text-gray-600">For midsize hospitals</p>
                 <p className="mt-4 text-4xl font-extrabold text-gray-900">
-                  $99<span className="text-xl font-medium text-gray-600">/mo</span>
+                  R1770.99<span className="text-xl font-medium text-gray-600">/mo</span>
                 </p>
                 <ul className="mt-6 space-y-3 text-left text-gray-600 flex-1">
                   <li className="flex items-center">
