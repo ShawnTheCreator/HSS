@@ -75,7 +75,7 @@ type ApiResponse = {
 type RegisterRequest = {
   full_name: string;
   email: string;
-  email_id: string; // Added email_id field
+  email_id: string;
   phone_number: string;
   password: string;
   biometric_hash?: string;
@@ -83,31 +83,6 @@ type RegisterRequest = {
   location_zone?: string;
   recaptcha_token?: string;
 };
-
-const formSchema = z
-  .object({
-    name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-    email: z.string().email({ message: "Please enter a valid email address" }),
-    emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
-    phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
-    password: z
-      .string()
-      .min(8, { message: "Password must be at least 8 characters" })
-      .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
-      .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
-      .regex(/\d/, { message: "Password must contain at least one number" })
-      .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
-type FormValues = z.infer<typeof formSchema>;
-
-// Replace with your actual reCAPTCHA v2 site key
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -119,13 +94,38 @@ const Register = () => {
     location: ""
   });
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  
-  // State to store the email after successful registration
+  const [agreementChecked, setAgreementChecked] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>("");
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
+
+  const formSchema = z
+    .object({
+      name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+      email: z.string().email({ message: "Please enter a valid email address" }),
+      emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
+      phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
+      password: z
+        .string()
+        .min(8, { message: "Password must be at least 8 characters" })
+        .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+        .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+        .regex(/\d/, { message: "Password must contain at least one number" })
+        .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords don't match",
+      path: ["confirmPassword"],
+    })
+    .refine(() => agreementChecked, {
+      message: "You must agree to the Incident Response Playbook",
+      path: ["agreement"],
+    });
+
+  type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -143,11 +143,9 @@ const Register = () => {
   useEffect(() => {
     const initializeSecurityData = async () => {
       try {
-        // Generate device fingerprint
         const fingerprint = generateDeviceFingerprint();
         setDeviceFingerprint(fingerprint);
 
-        // Get location data
         const location = await getLocationData();
         setLocationData(location);
       } catch (error) {
@@ -216,11 +214,19 @@ const Register = () => {
   };
 
   const onSubmit = async (data: FormValues) => {
-    // Check if reCAPTCHA is completed
     if (!recaptchaToken) {
       toast({
         title: "reCAPTCHA Required",
         description: "Please complete the reCAPTCHA verification",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!agreementChecked) {
+      toast({
+        title: "Agreement Required",
+        description: "You must agree to the Incident Response Playbook",
         variant: "destructive",
       });
       return;
@@ -231,16 +237,15 @@ const Register = () => {
       const registrationData: RegisterRequest = {
         full_name: data.name,
         email: data.email,
-        email_id: data.emailId, // Added email_id field
+        email_id: data.emailId,
         phone_number: data.phoneNumber,
         password: data.password,
-        biometric_hash: "", // Optional - can be populated later
+        biometric_hash: "",
         device_fingerprint: deviceFingerprint,
         location_zone: locationData.location,
         recaptcha_token: recaptchaToken,
       };
 
-      // Make sure this matches your backend route
       const response = await axios.post(
         'https://hss-backend.onrender.com/api/auth/register',
         registrationData,
@@ -252,24 +257,16 @@ const Register = () => {
       );
 
       if (response.status === 201) {
-        // Store the email after successful registration
         setRegisteredEmail(data.email);
         setShowEmailConfirmation(true);
-        
-        console.log('✅ Registration successful! Email captured:', data.email);
-        
-        // Store email in localStorage for reference
         localStorage.setItem('registeredEmail', data.email);
 
         toast({
           title: "Registration Successful",
           description: response.data.msg || response.data.message || "Account created successfully",
         });
-        
-        // REMOVED automatic navigation - user stays on success page
       }
     } catch (error) {
-      // Reset reCAPTCHA on error
       if (recaptchaRef.current) {
         recaptchaRef.current.reset();
       }
@@ -293,7 +290,6 @@ const Register = () => {
     }
   };
 
-  // Show email confirmation if registration was successful
   if (showEmailConfirmation && registeredEmail) {
     return (
       <AuthCard
@@ -545,20 +541,48 @@ const Register = () => {
             )}
           />
 
+          {/* Agreement Checkbox */}
+          <div className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id="agreement"
+              checked={agreementChecked}
+              onChange={(e) => setAgreementChecked(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-hss-purple-vivid focus:ring-hss-purple-vivid"
+            />
+            <label htmlFor="agreement" className="text-sm text-muted-foreground">
+              I have read and agree to the{' '}
+              <a 
+                href="/IncidentResponsePlaybook 1.0.pdf" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-hss-purple-vivid hover:underline font-medium"
+              >
+                Incident Response Playbook 1.0
+              </a>
+              {' '}(PDF)
+            </label>
+          </div>
+          {form.formState.errors.agreement && (
+            <p className="text-sm font-medium text-destructive">
+              {form.formState.errors.agreement.message}
+            </p>
+          )}
+
           {/* reCAPTCHA v2 Component */}
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
+              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
               onChange={handleRecaptchaChange}
               onExpired={handleRecaptchaExpired}
               onError={handleRecaptchaError}
-              theme="light" // or "dark"
-              size="normal" // or "compact"
+              theme="light"
+              size="normal"
             />
           </div>
 
-          {/* Security info display (optional - for debugging) */}
+          {/* Security info display */}
           {(deviceFingerprint || locationData.location) && (
             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
               <div>Device secured ✓</div>
@@ -571,7 +595,7 @@ const Register = () => {
           <Button 
             type="submit" 
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={isLoading || !recaptchaToken}
+            disabled={isLoading || !recaptchaToken || !agreementChecked}
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>
