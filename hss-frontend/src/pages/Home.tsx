@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, Calendar, ClipboardCheck } from "lucide-react";
-import AIChatbot from '../components/Bot'; // Adjust the import path as needed
+import AIChatbot from '../components/Bot'; 
 
 const Home = () => {
   return (

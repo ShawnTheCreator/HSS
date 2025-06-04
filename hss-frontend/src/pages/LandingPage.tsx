@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from 'react-router-dom';
-import heroImage from "Main.webp"; // You can replace with your actual image
+import heroImage from "../Main.webp"; // You can replace with your actual image
 
 const LandingPage: React.FC = () => {
   return (
