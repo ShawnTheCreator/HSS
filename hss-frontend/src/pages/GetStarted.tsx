@@ -15,30 +15,18 @@ const GetStarted: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <a
-                href="/"
+              <Link
+                to="/"
                 className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 Home
-              </a>
-              <a
-                href="/get-started"
-                className="text-gray-900 font-medium"
-              >
-                Get Started
-              </a>
-              <a
-                href="/login"
-                className="text-gray-700 hover:text-gray-900 transition-colors"
-              >
-                Login
-              </a>
-              <a
-                href="/register"
+              </Link>
+              <Link
+                to="/home"
                 className="px-4 py-2 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
               >
-                Register
-              </a>
+                Demo
+              </Link>
             </div>
           </div>
         </div>
