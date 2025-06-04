@@ -65,7 +65,7 @@ const getLocationData = async (): Promise<{ ip: string; location: string }> => {
   }
 };
 
-// Define types directly in the component
+// Define types
 type ApiResponse = {
   success: boolean;
   message?: string;
@@ -84,6 +84,29 @@ type RegisterRequest = {
   recaptcha_token?: string;
 };
 
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
+  phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters" })
+    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+    .regex(/\d/, { message: "Password must contain at least one number" })
+    .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
+  confirmPassword: z.string(),
+  agreement: z.literal(true, {
+    errorMap: () => ({ message: "You must agree to the Incident Response Playbook" }),
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -94,38 +117,11 @@ const Register = () => {
     location: ""
   });
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [agreementChecked, setAgreementChecked] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState<string>("");
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
-
-  const formSchema = z
-    .object({
-      name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-      email: z.string().email({ message: "Please enter a valid email address" }),
-      emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
-      phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
-      password: z
-        .string()
-        .min(8, { message: "Password must be at least 8 characters" })
-        .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
-        .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
-        .regex(/\d/, { message: "Password must contain at least one number" })
-        .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
-      confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: "Passwords don't match",
-      path: ["confirmPassword"],
-    })
-    .refine(() => agreementChecked, {
-      message: "You must agree to the Incident Response Playbook",
-      path: ["agreement"],
-    });
-
-  type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -136,35 +132,30 @@ const Register = () => {
       phoneNumber: "",
       password: "",
       confirmPassword: "",
+      agreement: false,
     },
   });
 
-  // Initialize device fingerprint and location on component mount
+  // Initialize device fingerprint and location
   useEffect(() => {
     const initializeSecurityData = async () => {
       try {
         const fingerprint = generateDeviceFingerprint();
         setDeviceFingerprint(fingerprint);
-
         const location = await getLocationData();
         setLocationData(location);
       } catch (error) {
         console.error('Failed to initialize security data:', error);
       }
     };
-
     initializeSecurityData();
   }, []);
 
-  // Handle reCAPTCHA change (v2)
+  // reCAPTCHA handlers
   const handleRecaptchaChange = (token: string | null) => {
     setRecaptchaToken(token);
-    if (token) {
-      console.log('reCAPTCHA token received:', token);
-    }
   };
 
-  // Handle reCAPTCHA expiration
   const handleRecaptchaExpired = () => {
     setRecaptchaToken(null);
     toast({
@@ -174,7 +165,6 @@ const Register = () => {
     });
   };
 
-  // Handle reCAPTCHA error
   const handleRecaptchaError = () => {
     setRecaptchaToken(null);
     toast({
@@ -184,19 +174,14 @@ const Register = () => {
     });
   };
 
-  // Function to send 2FA code
+  // Send 2FA code
   const send2FACode = async (email: string) => {
     try {
       const response = await axios.post(
         'https://hss-backend.onrender.com/api/auth/send-2fa',
         { email },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
-
       if (response.data.success) {
         toast({
           title: "2FA Code Sent",
@@ -213,20 +198,12 @@ const Register = () => {
     }
   };
 
+  // Form submission
   const onSubmit = async (data: FormValues) => {
     if (!recaptchaToken) {
       toast({
         title: "reCAPTCHA Required",
         description: "Please complete the reCAPTCHA verification",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!agreementChecked) {
-      toast({
-        title: "Agreement Required",
-        description: "You must agree to the Incident Response Playbook",
         variant: "destructive",
       });
       return;
@@ -240,7 +217,6 @@ const Register = () => {
         email_id: data.emailId,
         phone_number: data.phoneNumber,
         password: data.password,
-        biometric_hash: "",
         device_fingerprint: deviceFingerprint,
         location_zone: locationData.location,
         recaptcha_token: recaptchaToken,
@@ -249,33 +225,26 @@ const Register = () => {
       const response = await axios.post(
         'https://hss-backend.onrender.com/api/auth/register',
         registrationData,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+        { headers: { 'Content-Type': 'application/json' } }
       );
 
       if (response.status === 201) {
         setRegisteredEmail(data.email);
         setShowEmailConfirmation(true);
         localStorage.setItem('registeredEmail', data.email);
-
         toast({
           title: "Registration Successful",
-          description: response.data.msg || response.data.message || "Account created successfully",
+          description: response.data.msg || "Account created successfully",
         });
       }
     } catch (error) {
-      if (recaptchaRef.current) {
-        recaptchaRef.current.reset();
-      }
+      recaptchaRef.current?.reset();
       setRecaptchaToken(null);
-
+      
       if (axios.isAxiosError(error)) {
         toast({
           title: "Registration Failed",
-          description: error.response?.data?.error || error.response?.data?.msg || "An error occurred",
+          description: error.response?.data?.error || "An error occurred",
           variant: "destructive",
         });
       } else {
@@ -542,34 +511,41 @@ const Register = () => {
           />
 
           {/* Agreement Checkbox */}
-          <div className="flex items-start space-x-2">
-            <input
-              type="checkbox"
-              id="agreement"
-              checked={agreementChecked}
-              onChange={(e) => setAgreementChecked(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-hss-purple-vivid focus:ring-hss-purple-vivid"
-            />
-            <label htmlFor="agreement" className="text-sm text-muted-foreground">
-              I have read and agree to the{' '}
-              <a 
-                href="/IncidentResponsePlaybook 1.0.pdf" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-hss-purple-vivid hover:underline font-medium"
-              >
-                Incident Response Playbook 1.0
-              </a>
-              {' '}(PDF)
-            </label>
-          </div>
-          {form.formState.errors.agreement && (
-            <p className="text-sm font-medium text-destructive">
-              {form.formState.errors.agreement.message}
-            </p>
-          )}
+          <FormField
+            control={form.control}
+            name="agreement"
+            render={({ field }) => (
+              <FormItem>
+                <div className="flex items-start space-x-2">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-hss-purple-vivid focus:ring-hss-purple-vivid"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm text-muted-foreground font-normal">
+                    I have read and agree to the{' '}
+                    <a 
+                      href="/IncidentResponsePlaybook 1.0.pdf" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-hss-purple-vivid hover:underline font-medium"
+                    >
+                      Incident Response Playbook 1.0
+                    </a>
+                    {' '}(PDF)
+                  </FormLabel>
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-          {/* reCAPTCHA v2 Component */}
+          {/* reCAPTCHA */}
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
@@ -582,7 +558,7 @@ const Register = () => {
             />
           </div>
 
-          {/* Security info display */}
+          {/* Security info */}
           {(deviceFingerprint || locationData.location) && (
             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
               <div>Device secured ✓</div>
@@ -595,7 +571,7 @@ const Register = () => {
           <Button 
             type="submit" 
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={isLoading || !recaptchaToken || !agreementChecked}
+            disabled={isLoading || !recaptchaToken || !form.watch('agreement')}
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>
