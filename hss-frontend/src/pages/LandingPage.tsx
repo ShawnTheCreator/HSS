@@ -55,7 +55,7 @@ const LandingPage: React.FC = () => {
               </p>
               <div className="mt-8 flex space-x-4">
                 <Link
-  to="/get-started"
+  to="/getstarted"
   className="px-6 py-3 bg-purple-600 text-white font-medium rounded-md hover:bg-purple-700 transition-colors"
 >
   Get Started
