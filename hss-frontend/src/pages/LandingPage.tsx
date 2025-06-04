@@ -60,12 +60,6 @@ const LandingPage: React.FC = () => {
 >
   Get Started
 </Link>
-                <a
-                  href="#learn-more"
-                  className="px-6 py-3 border-2 border-gray-800 text-gray-800 font-medium rounded-md hover:bg-gray-100 transition-colors"
-                >
-                  Learn More
-                </a>
               </div>
             </div>
 
