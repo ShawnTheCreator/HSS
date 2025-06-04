@@ -132,7 +132,6 @@ const Register = () => {
       phoneNumber: "",
       password: "",
       confirmPassword: "",
-      agreement: false,
     },
   });
 
@@ -535,7 +534,7 @@ const Register = () => {
                       rel="noopener noreferrer"
                       className="text-hss-purple-vivid hover:underline font-medium"
                     >
-                      Incident Response Playbook 1.0
+                      Terms and conditions
                     </a>
                     {' '}(PDF)
                   </FormLabel>
