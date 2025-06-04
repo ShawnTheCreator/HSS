@@ -436,10 +436,10 @@ const Register = () => {
             name="emailId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email ID / Username</FormLabel>
+                <FormLabel>Employer ID</FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder="Enter your email ID or username" 
+                    placeholder="Enter your employer ID" 
                     {...field} 
                     autoComplete="username"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
