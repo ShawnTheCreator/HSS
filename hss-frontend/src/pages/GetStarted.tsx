@@ -609,7 +609,7 @@ const GetStarted: React.FC = () => {
                 <div className="mt-2 px-4 py-3 bg-gray-50 rounded-lg hidden">
                   <p className="text-gray-600">
                     Yes. HSS Secure is built with enterprise‐grade security in mind.
-                    We use AES‐256 encryption at rest, TLS 1.2+ in transit, and
+                    We use AES‐256 encryption at rest,  and
                     role‐based access controls. Our infrastructure is SOC 2 Type II
                     compliant.
                   </p>
@@ -624,13 +624,13 @@ const GetStarted: React.FC = () => {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
             <h2 className="text-3xl font-bold">Ready to Transform Your Staffing?</h2>
             <p className="mt-4 text-lg">
-              Sign up today and get 14 days of Pro plan free. No credit card required.
+              Sign up today try out the demo 
             </p>
             <a
-              href="/register"
+              href="/home"
               className="mt-6 inline-block px-8 py-3 bg-white text-purple-600 font-semibold rounded-md hover:bg-gray-100 transition-colors"
             >
-              Start Your Free Trial
+              Demo
             </a>
           </div>
         </section>
