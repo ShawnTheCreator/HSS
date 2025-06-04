@@ -75,6 +75,7 @@ type ApiResponse = {
 type RegisterRequest = {
   full_name: string;
   email: string;
+  email_id: string; // Added email_id field
   phone_number: string;
   password: string;
   biometric_hash?: string;
@@ -87,6 +88,7 @@ const formSchema = z
   .object({
     name: z.string().min(2, { message: "Name must be at least 2 characters" }),
     email: z.string().email({ message: "Please enter a valid email address" }),
+    emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
     phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
     password: z
       .string()
@@ -118,7 +120,7 @@ const Register = () => {
   });
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   
-  // NEW: State to store the email after successful registration
+  // State to store the email after successful registration
   const [registeredEmail, setRegisteredEmail] = useState<string>("");
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   
@@ -130,6 +132,7 @@ const Register = () => {
     defaultValues: {
       name: "",
       email: "",
+      emailId: "",
       phoneNumber: "",
       password: "",
       confirmPassword: "",
@@ -183,7 +186,7 @@ const Register = () => {
     });
   };
 
-  // NEW: Function to send 2FA code
+  // Function to send 2FA code
   const send2FACode = async (email: string) => {
     try {
       const response = await axios.post(
@@ -201,8 +204,6 @@ const Register = () => {
           title: "2FA Code Sent",
           description: "Please check your email for the verification code",
         });
-        // You can navigate to a 2FA verification page here
-        // navigate("/verify-2fa", { state: { email } });
       }
     } catch (error) {
       console.error('Error sending 2FA code:', error);
@@ -230,6 +231,7 @@ const Register = () => {
       const registrationData: RegisterRequest = {
         full_name: data.name,
         email: data.email,
+        email_id: data.emailId, // Added email_id field
         phone_number: data.phoneNumber,
         password: data.password,
         biometric_hash: "", // Optional - can be populated later
@@ -250,37 +252,21 @@ const Register = () => {
       );
 
       if (response.status === 201) {
-        // EXTRACT THE EMAIL HERE after successful registration
+        // Store the email after successful registration
         setRegisteredEmail(data.email);
         setShowEmailConfirmation(true);
         
         console.log('✅ Registration successful! Email captured:', data.email);
         
-        // You can now use the email for various purposes:
-        // 1. Store it in localStorage/sessionStorage
+        // Store email in localStorage for reference
         localStorage.setItem('registeredEmail', data.email);
-        
-        // 2. Pass it to parent component via callback (if this is a child component)
-        // if (onEmailCaptured) {
-        //   onEmailCaptured(data.email);
-        // }
-        
-        // 3. Store it in global state (Redux, Zustand, etc.)
-        // dispatch(setUserEmail(data.email));
-        
-        // 4. Use it immediately for 2FA or other operations
-        // Uncomment the line below if you want to automatically send 2FA
-        // await send2FACode(data.email);
 
         toast({
           title: "Registration Successful",
           description: response.data.msg || response.data.message || "Account created successfully",
         });
         
-        // Navigate after a short delay to show confirmation
-        setTimeout(() => {
-          navigate("/login");
-        }, 2000);
+        // REMOVED automatic navigation - user stays on success page
       }
     } catch (error) {
       // Reset reCAPTCHA on error
@@ -315,38 +301,72 @@ const Register = () => {
         cardDescription="Your account has been created"
         footer={
           <div className="w-full flex flex-col gap-4 text-center text-sm text-muted-foreground">
-            <Link to="/login" className="text-hss-purple-vivid hover:underline">
-              Continue to Login
+            <div>
+              Want to try logging in?{" "}
+              <Link to="/login" className="text-hss-purple-vivid hover:underline">
+                Go to Login
+              </Link>
+            </div>
+            <Link to="/" className="text-muted-foreground hover:text-foreground">
+              Return to home page
             </Link>
           </div>
         }
       >
-        <div className="space-y-4 text-center">
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-            <h3 className="font-semibold text-green-800">Account Created Successfully!</h3>
-            <p className="text-green-600 mt-2">
-              Registration email sent to: <strong>{registeredEmail}</strong>
+        <div className="space-y-6 text-center">
+          <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h3 className="font-semibold text-green-800 text-lg mb-2">Account Created Successfully!</h3>
+            <p className="text-green-600">
+              Registration email sent to: <strong className="block mt-1">{registeredEmail}</strong>
             </p>
-            <p className="text-sm text-green-600 mt-1">
-              Please wait for admin approval before logging in.
-            </p>
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm text-yellow-700 font-medium">
+                ⏳ Please wait for admin approval before logging in
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                You will be notified via email once your account is approved
+              </p>
+            </div>
           </div>
           
-          <div className="space-y-2">
-            <Button 
-              onClick={() => send2FACode(registeredEmail)}
-              variant="outline"
-              className="w-full"
-            >
-              Send 2FA Code (Optional)
-            </Button>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              What would you like to do next?
+            </p>
             
-            <Button 
-              onClick={() => navigate("/login")}
-              className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            >
-              Go to Login
-            </Button>
+            <div className="grid gap-3">
+              <Button 
+                onClick={() => send2FACode(registeredEmail)}
+                variant="outline"
+                className="w-full"
+              >
+                📧 Send 2FA Code (Optional)
+              </Button>
+              
+              <Button 
+                onClick={() => navigate("/login")}
+                className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
+              >
+                Continue to Login
+              </Button>
+              
+              <Button 
+                onClick={() => {
+                  setShowEmailConfirmation(false);
+                  setRegisteredEmail("");
+                  form.reset();
+                }}
+                variant="ghost"
+                className="w-full"
+              >
+                Register Another Account
+              </Button>
+            </div>
           </div>
         </div>
       </AuthCard>
@@ -397,16 +417,38 @@ const Register = () => {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Email Address</FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder="Enter your email" 
+                    placeholder="Enter your email address" 
                     {...field} 
                     autoComplete="email"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
                   />
                 </FormControl>
                 <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="emailId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email ID / Username</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Enter your email ID or username" 
+                    {...field} 
+                    autoComplete="username"
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+                <div className="text-xs text-muted-foreground mt-1">
+                  This will be your unique identifier for login
+                </div>
               </FormItem>
             )}
           />
