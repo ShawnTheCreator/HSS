@@ -11,6 +11,8 @@ import Scheduling from "./pages/Scheduling";
 import Compliance from "./pages/Compliance";
 import Staff from "./pages/Staff";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/LandingPage";
+import GetStarted from "./pages/GetStarted";
 
 const queryClient = new QueryClient();
 
@@ -21,7 +23,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/getstarted" element={<GetStarted />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
