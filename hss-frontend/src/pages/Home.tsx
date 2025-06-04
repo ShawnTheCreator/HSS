@@ -1,7 +1,7 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, Calendar, ClipboardCheck } from "lucide-react";
+import AIChatbot from '../components/Bot'; // Adjust the import path as needed
 
 const Home = () => {
   return (
@@ -175,17 +175,23 @@ const Home = () => {
                 </Button>
               </Link>
               <Button
-  size="lg"
-  variant="outline"
-  className="border-white text-white bg-black/10 hover:bg-white/10 animate-fade-in [animation-delay:200ms]"
->
-  Learn More
-</Button>
-
+                size="lg"
+                variant="outline"
+                className="border-white text-white bg-black/10 hover:bg-white/10 animate-fade-in [animation-delay:200ms]"
+              >
+                Learn More
+              </Button>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Chatbot Component */}
+      <AIChatbot 
+        position="bottom-right"
+        theme="dark"
+        autoStart={true}
+      />
 
       {/* Footer */}
       <footer className="border-t border-border bg-background animate-fade-in [animation-delay:700ms]">
@@ -221,4 +227,3 @@ const Home = () => {
 };
 
 export default Home;
-

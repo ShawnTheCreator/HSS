@@ -16,7 +16,7 @@ interface ChatbotProps {
 }
 
 const AIChatbot: React.FC<ChatbotProps> = ({
-  apiKey = 'your-api-key-here',
+  apiKey = process.env.REACT_APP_API_KEY,
   model = 'deepseek/deepseek-r1-distill-llama-70b:free',
   autoStart = true,
   theme = 'default',
