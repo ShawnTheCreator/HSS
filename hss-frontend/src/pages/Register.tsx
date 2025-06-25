@@ -18,18 +18,18 @@ import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import axios from "axios";
 import ReCAPTCHA from "react-google-recaptcha";
-import DOMPurify from "dompurify"; // Import DOMPurify for sanitization
+import DOMPurify from "dompurify";
 
 // Device fingerprinting function
 const generateDeviceFingerprint = (): string => {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
   if (ctx) {
-    ctx.textBaseline = 'top';
-    ctx.font = '14px Arial';
-    ctx.fillText('Device fingerprint', 2, 2);
+    ctx.textBaseline = "top";
+    ctx.font = "14px Arial";
+    ctx.fillText("Device fingerprint", 2, 2);
   }
-  
+
   const fingerprint = {
     userAgent: navigator.userAgent,
     language: navigator.language,
@@ -38,12 +38,14 @@ const generateDeviceFingerprint = (): string => {
     screenColorDepth: screen.colorDepth,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     canvas: canvas.toDataURL(),
-    plugins: Array.from(navigator.plugins).map(p => p.name).join(','),
+    plugins: Array.from(navigator.plugins)
+      .map((p) => p.name)
+      .join(","),
     cookieEnabled: navigator.cookieEnabled,
     onlineStatus: navigator.onLine,
     hardwareConcurrency: navigator.hardwareConcurrency || 0,
   };
-  
+
   return btoa(JSON.stringify(fingerprint)).slice(0, 64);
 };
 
@@ -51,7 +53,7 @@ const generateDeviceFingerprint = (): string => {
 const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
+      reject(new Error("Geolocation is not supported by your browser"));
       return;
     }
 
@@ -59,7 +61,7 @@ const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
       (position) => {
         resolve({
           lat: position.coords.latitude,
-          lon: position.coords.longitude
+          lon: position.coords.longitude,
         });
       },
       (error) => {
@@ -68,44 +70,73 @@ const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0
+        maximumAge: 0,
       }
     );
   });
 };
 
 // Reverse geocoding to get address from coordinates
-const getAddressFromCoordinates = async (lat: number, lon: number): Promise<string> => {
+const getAddressFromCoordinates = async (
+  lat: number,
+  lon: number
+): Promise<string> => {
   try {
-    const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+    const response = await axios.get(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+    );
     const { address } = response.data;
-    return `${address.city || address.town || address.village || ''}, ${address.state || ''}, ${address.country || ''}`;
+    return `${address.city || address.town || address.village || ""}, ${
+      address.state || ""
+    }, ${address.country || ""}`;
   } catch (error) {
-    console.error('Reverse geocoding failed:', error);
-    return 'Unknown Location';
+    console.error("Reverse geocoding failed:", error);
+    return "Unknown Location";
   }
 };
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
-  phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
-  password: z
-    .string()
-    .min(8, { message: "Password must be at least 8 characters" })
-    .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
-    .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
-    .regex(/\d/, { message: "Password must contain at least one number" })
-    .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
-  confirmPassword: z.string(),
-  agreement: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the terms and conditions" }),
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const formSchema = z
+  .object({
+    hospitalName: z
+      .string()
+      .min(2, { message: "Hospital name must be at least 2 characters" }),
+    province: z.enum(
+      [
+        "Eastern Cape",
+        "Free State",
+        "Gauteng",
+        "KwaZulu-Natal",
+        "Limpopo",
+        "Mpumalanga",
+        "Northern Cape",
+        "North West",
+        "Western Cape",
+      ],
+      { errorMap: () => ({ message: "Please select a province" }) }
+    ),
+    city: z.string().min(2, { message: "City must be at least 2 characters" }),
+    contactPersonName: z.string().min(2, {
+      message: "Contact person name must be at least 2 characters",
+    }),
+    email: z.string().email({ message: "Please enter a valid email address" }),
+    emailId: z.string().min(3, { message: "Email ID must be at least 3 characters" }),
+    phoneNumber: z.string().min(10, { message: "Please enter a valid phone number" }),
+    password: z
+      .string()
+      .min(8, { message: "Password must be at least 8 characters" })
+      .regex(/[a-z]/, { message: "Password must contain at least one lowercase letter" })
+      .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
+      .regex(/\d/, { message: "Password must contain at least one number" })
+      .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
+    confirmPassword: z.string(),
+    agreement: z.literal(true, {
+      errorMap: () => ({ message: "You must agree to the terms and conditions" }),
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type FormValues = z.infer<typeof formSchema>;
 
@@ -114,7 +145,9 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
-  const [gpsCoordinates, setGpsCoordinates] = useState<{ lat: number; lon: number } | null>(null);
+  const [gpsCoordinates, setGpsCoordinates] = useState<{ lat: number; lon: number } | null>(
+    null
+  );
   const [locationAddress, setLocationAddress] = useState<string>("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
@@ -123,7 +156,10 @@ const Register = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
+      hospitalName: "",
+      province: "" as any,
+      city: "",
+      contactPersonName: "",
       email: "",
       emailId: "",
       phoneNumber: "",
@@ -132,24 +168,19 @@ const Register = () => {
     },
   });
 
-  // Initialize device fingerprint and GPS location
   useEffect(() => {
     const initializeSecurityData = async () => {
       try {
-        // Generate device fingerprint
         const fingerprint = generateDeviceFingerprint();
         setDeviceFingerprint(fingerprint);
 
-        // Get GPS coordinates
         const coords = await getGPSCoordinates();
         setGpsCoordinates(coords);
 
-        // Get address from coordinates
         const address = await getAddressFromCoordinates(coords.lat, coords.lon);
         setLocationAddress(address);
-
       } catch (error) {
-        console.error('Failed to initialize security data:', error);
+        console.error("Failed to initialize security data:", error);
         toast({
           title: "Location Access Required",
           description: "Please enable GPS to continue with registration",
@@ -183,11 +214,14 @@ const Register = () => {
     setIsLoading(true);
     try {
       const registrationData = {
-        full_name: DOMPurify.sanitize(data.name), // Sanitize input
-        email: DOMPurify.sanitize(data.email), // Sanitize input
-        email_id: DOMPurify.sanitize(data.emailId), // Sanitize input
-        phone_number: DOMPurify.sanitize(data.phoneNumber), // Sanitize input
-        password: data.password, // Passwords are not sanitized for security reasons
+        hospital_name: DOMPurify.sanitize(data.hospitalName),
+        province: data.province,
+        city: DOMPurify.sanitize(data.city),
+        contact_person_name: DOMPurify.sanitize(data.contactPersonName),
+        email: DOMPurify.sanitize(data.email),
+        email_id: DOMPurify.sanitize(data.emailId),
+        phone_number: DOMPurify.sanitize(data.phoneNumber),
+        password: data.password,
         device_fingerprint: deviceFingerprint,
         gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
         location_address: locationAddress,
@@ -195,9 +229,9 @@ const Register = () => {
       };
 
       const response = await axios.post(
-        'https://hss-backend.onrender.com/api/auth/register',
+        "https://hss-backend.onrender.com/api/auth/register",
         registrationData,
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { "Content-Type": "application/json" } }
       );
 
       if (response.status === 201) {
@@ -210,7 +244,7 @@ const Register = () => {
     } catch (error) {
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
-      
+
       if (axios.isAxiosError(error)) {
         toast({
           title: "Registration Failed",
@@ -231,8 +265,8 @@ const Register = () => {
 
   return (
     <AuthCard
-      cardTitle="Create an Account"
-      cardDescription="Register to access HSS Secure"
+      cardTitle="Register Your Hospital"
+      cardDescription="Create an account to securely manage your hospital data"
       footer={
         <div className="w-full flex flex-col gap-4 text-center text-sm text-muted-foreground">
           <div>
@@ -249,39 +283,19 @@ const Register = () => {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Hospital Name */}
           <FormField
             control={form.control}
-            name="name"
+            name="hospitalName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Full Name</FormLabel>
+                <FormLabel>Hospital Name</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter your full name" 
-                    {...field} 
-                    autoComplete="name"
+                  <Input
+                    placeholder="Enter hospital name"
+                    {...field}
+                    disabled={!gpsCoordinates}
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
-                    disabled={!gpsCoordinates} // Disable if GPS is not available
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email Address</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="Enter your email address" 
-                    {...field} 
-                    autoComplete="email"
-                    className="border-border/50 bg-background/80 backdrop-blur-sm"
-                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -289,6 +303,98 @@ const Register = () => {
             )}
           />
 
+          {/* Province */}
+          <FormField
+            control={form.control}
+            name="province"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Province</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    disabled={!gpsCoordinates}
+                    className="w-full border border-border/50 rounded px-2 py-1 bg-background/80"
+                  >
+                    <option value="">Select a province</option>
+                    <option value="Eastern Cape">Eastern Cape</option>
+                    <option value="Free State">Free State</option>
+                    <option value="Gauteng">Gauteng</option>
+                    <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                    <option value="Limpopo">Limpopo</option>
+                    <option value="Mpumalanga">Mpumalanga</option>
+                    <option value="Northern Cape">Northern Cape</option>
+                    <option value="North West">North West</option>
+                    <option value="Western Cape">Western Cape</option>
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* City */}
+          <FormField
+            control={form.control}
+            name="city"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>City</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter city or town"
+                    {...field}
+                    disabled={!gpsCoordinates}
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Contact Person Name */}
+          <FormField
+            control={form.control}
+            name="contactPersonName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Contact Person Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter contact person name"
+                    {...field}
+                    disabled={!gpsCoordinates}
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Email */}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Address</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter your email address"
+                    {...field}
+                    autoComplete="email"
+                    disabled={!gpsCoordinates}
+                    className="border-border/50 bg-background/80 backdrop-blur-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Employer ID */}
           <FormField
             control={form.control}
             name="emailId"
@@ -296,12 +402,12 @@ const Register = () => {
               <FormItem>
                 <FormLabel>Employer ID</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter your employer ID" 
-                    {...field} 
+                  <Input
+                    placeholder="Enter your employer ID"
+                    {...field}
                     autoComplete="username"
+                    disabled={!gpsCoordinates}
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
-                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -311,7 +417,8 @@ const Register = () => {
               </FormItem>
             )}
           />
-          
+
+          {/* Phone Number */}
           <FormField
             control={form.control}
             name="phoneNumber"
@@ -319,19 +426,20 @@ const Register = () => {
               <FormItem>
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter your phone number" 
-                    {...field} 
+                  <Input
+                    placeholder="Enter your phone number"
+                    {...field}
                     autoComplete="tel"
+                    disabled={!gpsCoordinates}
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
-                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          
+
+          {/* Password */}
           <FormField
             control={form.control}
             name="password"
@@ -345,8 +453,8 @@ const Register = () => {
                       placeholder="Create a password"
                       {...field}
                       autoComplete="new-password"
+                      disabled={!gpsCoordinates}
                       className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
-                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                     <Button
                       type="button"
@@ -365,12 +473,14 @@ const Register = () => {
                 </FormControl>
                 <FormMessage />
                 <div className="text-xs text-muted-foreground mt-1">
-                  Password must contain: 8+ characters, uppercase, lowercase, number, and special character
+                  Password must contain: 8+ characters, uppercase, lowercase, number,
+                  and special character
                 </div>
               </FormItem>
             )}
           />
-          
+
+          {/* Confirm Password */}
           <FormField
             control={form.control}
             name="confirmPassword"
@@ -384,8 +494,8 @@ const Register = () => {
                       placeholder="Confirm your password"
                       {...field}
                       autoComplete="new-password"
+                      disabled={!gpsCoordinates}
                       className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
-                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                     <Button
                       type="button"
@@ -421,21 +531,21 @@ const Register = () => {
                       onChange={(e) => field.onChange(e.target.checked)}
                       onBlur={field.onBlur}
                       ref={field.ref}
+                      disabled={!gpsCoordinates}
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-hss-purple-vivid focus:ring-hss-purple-vivid"
-                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                   </FormControl>
                   <FormLabel className="text-sm text-muted-foreground font-normal">
-                    I have read and agree to the{' '}
-                    <a 
-                      href="/IncidentResponsePlaybook 1.0.pdf" 
-                      target="_blank" 
+                    I have read and agree to the{" "}
+                    <a
+                      href="/IncidentResponsePlaybook 1.0.pdf"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-hss-purple-vivid hover:underline font-medium"
                     >
                       Terms and conditions
-                    </a>
-                    {' '}(PDF)
+                    </a>{" "}
+                    (PDF)
                   </FormLabel>
                 </div>
                 <FormMessage />
@@ -456,16 +566,21 @@ const Register = () => {
           {gpsCoordinates && (
             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
               <div>Device secured ✓</div>
-              <div>GPS Coordinates: {gpsCoordinates.lat.toFixed(4)}, {gpsCoordinates.lon.toFixed(4)}</div>
+              <div>
+                GPS Coordinates: {gpsCoordinates.lat.toFixed(4)},{" "}
+                {gpsCoordinates.lon.toFixed(4)}
+              </div>
               {locationAddress && <div>Location: {locationAddress}</div>}
               <div className="text-green-600 mt-1">✓ Real GPS location detected</div>
             </div>
           )}
-          
-          <Button 
-            type="submit" 
+
+          <Button
+            type="submit"
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={isLoading || !recaptchaToken || !form.watch('agreement') || !gpsCoordinates}
+            disabled={
+              isLoading || !recaptchaToken || !form.watch("agreement") || !gpsCoordinates
+            }
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>
