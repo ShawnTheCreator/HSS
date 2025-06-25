@@ -110,9 +110,6 @@ const Login = () => {
   // Handle reCAPTCHA change (v2)
   const handleRecaptchaChange = (token: string | null) => {
     setRecaptchaToken(token);
-    if (token) {
-      console.log('reCAPTCHA token received:', token);
-    }
   };
 
   // Handle reCAPTCHA expiration

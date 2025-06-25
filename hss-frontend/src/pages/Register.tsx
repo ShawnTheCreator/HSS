@@ -18,6 +18,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import axios from "axios";
 import ReCAPTCHA from "react-google-recaptcha";
+import DOMPurify from "dompurify"; // Import DOMPurify for sanitization
 
 // Device fingerprinting function
 const generateDeviceFingerprint = (): string => {
@@ -46,42 +47,43 @@ const generateDeviceFingerprint = (): string => {
   return btoa(JSON.stringify(fingerprint)).slice(0, 64);
 };
 
-// IP and location detection
-const getLocationData = async (): Promise<{ ip: string; location: string }> => {
+// GPS-based location detection
+const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser'));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude
+        });
+      },
+      (error) => {
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  });
+};
+
+// Reverse geocoding to get address from coordinates
+const getAddressFromCoordinates = async (lat: number, lon: number): Promise<string> => {
   try {
-    const response = await axios.get('https://ipapi.co/json/');
-    const data = response.data;
-    
-    return {
-      ip: data.ip || 'unknown',
-      location: `${data.city || 'Unknown'}, ${data.region || 'Unknown'}, ${data.country_name || 'Unknown'}`
-    };
+    const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+    const { address } = response.data;
+    return `${address.city || address.town || address.village || ''}, ${address.state || ''}, ${address.country || ''}`;
   } catch (error) {
-    console.error('Failed to get location data:', error);
-    return {
-      ip: 'unknown',
-      location: 'Unknown Location'
-    };
+    console.error('Reverse geocoding failed:', error);
+    return 'Unknown Location';
   }
-};
-
-// Define types
-type ApiResponse = {
-  success: boolean;
-  message?: string;
-  error?: string;
-};
-
-type RegisterRequest = {
-  full_name: string;
-  email: string;
-  email_id: string;
-  phone_number: string;
-  password: string;
-  biometric_hash?: string;
-  device_fingerprint?: string;
-  location_zone?: string;
-  recaptcha_token?: string;
 };
 
 const formSchema = z.object({
@@ -98,7 +100,7 @@ const formSchema = z.object({
     .regex(/[^a-zA-Z0-9]/, { message: "Password must contain at least one special character" }),
   confirmPassword: z.string(),
   agreement: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Incident Response Playbook" }),
+    errorMap: () => ({ message: "You must agree to the terms and conditions" }),
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -112,14 +114,9 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [deviceFingerprint, setDeviceFingerprint] = useState<string>("");
-  const [locationData, setLocationData] = useState<{ ip: string; location: string }>({
-    ip: "",
-    location: ""
-  });
+  const [gpsCoordinates, setGpsCoordinates] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationAddress, setLocationAddress] = useState<string>("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [registeredEmail, setRegisteredEmail] = useState<string>("");
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
-  
   const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
 
@@ -135,69 +132,35 @@ const Register = () => {
     },
   });
 
-  // Initialize device fingerprint and location
+  // Initialize device fingerprint and GPS location
   useEffect(() => {
     const initializeSecurityData = async () => {
       try {
+        // Generate device fingerprint
         const fingerprint = generateDeviceFingerprint();
         setDeviceFingerprint(fingerprint);
-        const location = await getLocationData();
-        setLocationData(location);
+
+        // Get GPS coordinates
+        const coords = await getGPSCoordinates();
+        setGpsCoordinates(coords);
+
+        // Get address from coordinates
+        const address = await getAddressFromCoordinates(coords.lat, coords.lon);
+        setLocationAddress(address);
+
       } catch (error) {
         console.error('Failed to initialize security data:', error);
+        toast({
+          title: "Location Access Required",
+          description: "Please enable GPS to continue with registration",
+          variant: "destructive",
+        });
       }
     };
+
     initializeSecurityData();
   }, []);
 
-  // reCAPTCHA handlers
-  const handleRecaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
-  };
-
-  const handleRecaptchaExpired = () => {
-    setRecaptchaToken(null);
-    toast({
-      title: "reCAPTCHA Expired",
-      description: "Please complete the reCAPTCHA again",
-      variant: "destructive",
-    });
-  };
-
-  const handleRecaptchaError = () => {
-    setRecaptchaToken(null);
-    toast({
-      title: "reCAPTCHA Error",
-      description: "There was an error loading reCAPTCHA. Please try again.",
-      variant: "destructive",
-    });
-  };
-
-  // Send 2FA code
-  const send2FACode = async (email: string) => {
-    try {
-      const response = await axios.post(
-        'https://hss-backend.onrender.com/api/auth/send-2fa',
-        { email },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      if (response.data.success) {
-        toast({
-          title: "2FA Code Sent",
-          description: "Please check your email for the verification code",
-        });
-      }
-    } catch (error) {
-      console.error('Error sending 2FA code:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send 2FA code. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Form submission
   const onSubmit = async (data: FormValues) => {
     if (!recaptchaToken) {
       toast({
@@ -208,16 +171,26 @@ const Register = () => {
       return;
     }
 
+    if (!gpsCoordinates) {
+      toast({
+        title: "Location Access Required",
+        description: "Please enable GPS to continue with registration",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const registrationData: RegisterRequest = {
-        full_name: data.name,
-        email: data.email,
-        email_id: data.emailId,
-        phone_number: data.phoneNumber,
-        password: data.password,
+      const registrationData = {
+        full_name: DOMPurify.sanitize(data.name), // Sanitize input
+        email: DOMPurify.sanitize(data.email), // Sanitize input
+        email_id: DOMPurify.sanitize(data.emailId), // Sanitize input
+        phone_number: DOMPurify.sanitize(data.phoneNumber), // Sanitize input
+        password: data.password, // Passwords are not sanitized for security reasons
         device_fingerprint: deviceFingerprint,
-        location_zone: locationData.location,
+        gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
+        location_address: locationAddress,
         recaptcha_token: recaptchaToken,
       };
 
@@ -228,13 +201,11 @@ const Register = () => {
       );
 
       if (response.status === 201) {
-        setRegisteredEmail(data.email);
-        setShowEmailConfirmation(true);
-        localStorage.setItem('registeredEmail', data.email);
         toast({
           title: "Registration Successful",
           description: response.data.msg || "Account created successfully",
         });
+        navigate("/login");
       }
     } catch (error) {
       recaptchaRef.current?.reset();
@@ -257,85 +228,6 @@ const Register = () => {
       setIsLoading(false);
     }
   };
-
-  if (showEmailConfirmation && registeredEmail) {
-    return (
-      <AuthCard
-        cardTitle="Registration Successful!"
-        cardDescription="Your account has been created"
-        footer={
-          <div className="w-full flex flex-col gap-4 text-center text-sm text-muted-foreground">
-            <div>
-              Want to try logging in?{" "}
-              <Link to="/login" className="text-hss-purple-vivid hover:underline">
-                Go to Login
-              </Link>
-            </div>
-            <Link to="/" className="text-muted-foreground hover:text-foreground">
-              Return to home page
-            </Link>
-          </div>
-        }
-      >
-        <div className="space-y-6 text-center">
-          <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h3 className="font-semibold text-green-800 text-lg mb-2">Account Created Successfully!</h3>
-            <p className="text-green-600">
-              Registration email sent to: <strong className="block mt-1">{registeredEmail}</strong>
-            </p>
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-              <p className="text-sm text-yellow-700 font-medium">
-                ⏳ Please wait for admin approval before logging in
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                You will be notified via email once your account is approved
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              What would you like to do next?
-            </p>
-            
-            <div className="grid gap-3">
-              <Button 
-                onClick={() => send2FACode(registeredEmail)}
-                variant="outline"
-                className="w-full"
-              >
-                📧 Send 2FA Code (Optional)
-              </Button>
-              
-              <Button 
-                onClick={() => navigate("/login")}
-                className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-              >
-                Continue to Login
-              </Button>
-              
-              <Button 
-                onClick={() => {
-                  setShowEmailConfirmation(false);
-                  setRegisteredEmail("");
-                  form.reset();
-                }}
-                variant="ghost"
-                className="w-full"
-              >
-                Register Another Account
-              </Button>
-            </div>
-          </div>
-        </div>
-      </AuthCard>
-    );
-  }
 
   return (
     <AuthCard
@@ -369,6 +261,7 @@ const Register = () => {
                     {...field} 
                     autoComplete="name"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
+                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -388,6 +281,7 @@ const Register = () => {
                     {...field} 
                     autoComplete="email"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
+                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -407,6 +301,7 @@ const Register = () => {
                     {...field} 
                     autoComplete="username"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
+                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -429,6 +324,7 @@ const Register = () => {
                     {...field} 
                     autoComplete="tel"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
+                    disabled={!gpsCoordinates} // Disable if GPS is not available
                   />
                 </FormControl>
                 <FormMessage />
@@ -450,6 +346,7 @@ const Register = () => {
                       {...field}
                       autoComplete="new-password"
                       className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
+                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                     <Button
                       type="button"
@@ -488,6 +385,7 @@ const Register = () => {
                       {...field}
                       autoComplete="new-password"
                       className="border-border/50 bg-background/80 backdrop-blur-sm pr-10"
+                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                     <Button
                       type="button"
@@ -524,6 +422,7 @@ const Register = () => {
                       onBlur={field.onBlur}
                       ref={field.ref}
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-hss-purple-vivid focus:ring-hss-purple-vivid"
+                      disabled={!gpsCoordinates} // Disable if GPS is not available
                     />
                   </FormControl>
                   <FormLabel className="text-sm text-muted-foreground font-normal">
@@ -549,28 +448,24 @@ const Register = () => {
             <ReCAPTCHA
               ref={recaptchaRef}
               sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-              onChange={handleRecaptchaChange}
-              onExpired={handleRecaptchaExpired}
-              onError={handleRecaptchaError}
-              theme="light"
-              size="normal"
+              onChange={setRecaptchaToken}
             />
           </div>
 
-          {/* Security info */}
-          {(deviceFingerprint || locationData.location) && (
+          {/* GPS Location Info */}
+          {gpsCoordinates && (
             <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
               <div>Device secured ✓</div>
-              {locationData.location && locationData.location !== "Unknown Location" && (
-                <div>Location: {locationData.location}</div>
-              )}
+              <div>GPS Coordinates: {gpsCoordinates.lat.toFixed(4)}, {gpsCoordinates.lon.toFixed(4)}</div>
+              {locationAddress && <div>Location: {locationAddress}</div>}
+              <div className="text-green-600 mt-1">✓ Real GPS location detected</div>
             </div>
           )}
           
           <Button 
             type="submit" 
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
-            disabled={isLoading || !recaptchaToken || !form.watch('agreement')}
+            disabled={isLoading || !recaptchaToken || !form.watch('agreement') || !gpsCoordinates}
           >
             {isLoading ? "Registering..." : "Register"}
           </Button>
