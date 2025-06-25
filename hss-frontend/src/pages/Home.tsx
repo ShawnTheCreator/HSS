@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Users, Calendar, ClipboardCheck } from "lucide-react";
-import AIChatbot from '../components/Bot'; 
+import SecurityChatbot from '../components/Bot'; 
 
 const Home = () => {
   return (
@@ -187,10 +187,9 @@ const Home = () => {
       </section>
 
       {/* Chatbot Component */}
-      <AIChatbot 
-        position="bottom-right"
-        theme="dark"
-        autoStart={true}
+      <SecurityChatbot 
+        
+        
       />
 
       {/* Footer */}

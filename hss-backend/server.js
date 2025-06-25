@@ -13,7 +13,8 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Enhanced CORS configuration
 const allowedOrigins = [
-  'https://healthcaresecuresystem.netlify.app'
+  'https://healthcaresecuresystem.netlify.app',
+  "http://localhost:8080"
 ];
 
 const corsOptions = {
