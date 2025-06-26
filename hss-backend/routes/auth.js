@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const User = require('../models/User');
 require('dotenv').config();
 
@@ -34,6 +35,7 @@ router.post('/register', async (req, res) => {
       recaptcha_token,
     } = req.body;
 
+    // Check required fields
     if (
       !hospital_name || !province || !city || !contact_person_name ||
       !email || !email_id || !phone_number || !password
@@ -41,13 +43,29 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Please fill all required fields' });
     }
 
+    // reCAPTCHA validation
+    if (!recaptcha_token) {
+      return res.status(400).json({ error: 'Missing reCAPTCHA token' });
+    }
+
+    const secretKey = process.env.RECAPTCHA_SECRET;
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptcha_token}`;
+
+    const { data: googleVerify } = await axios.post(verifyUrl);
+    if (!googleVerify.success) {
+      return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+    }
+
+    // Check if user exists
     const existing = await User.findOne({ emailId: email_id });
     if (existing) {
       return res.status(400).json({ error: 'User already exists with this email ID' });
     }
 
+    // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
+    // Create new user
     const newUser = new User({
       hospital_name,
       province,
@@ -65,6 +83,7 @@ router.post('/register', async (req, res) => {
 
     await newUser.save();
 
+    // Generate JWT token for verification
     const token = jwt.sign(
       { userId: newUser._id },
       process.env.JWT_SECRET || 'verify-secret',
@@ -92,6 +111,7 @@ router.post('/register', async (req, res) => {
       message: 'Registration successful. Please wait for admin approval.',
     });
   } catch (err) {
+    console.error('[REGISTER ERROR]', err);
     res.status(500).json({ error: 'Registration failed', details: err.message });
   }
 });
@@ -115,12 +135,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Account not approved by admin yet' });
     }
 
-    // Clear any previous 2FA codes
     user.twoFA_code = undefined;
     user.twoFA_expires = undefined;
     await user.save();
 
-    // Temporary token for 2FA verification
     const tempToken = jwt.sign(
       { userId: user._id, twoFAPending: true },
       process.env.JWT_SECRET || 'secret',
@@ -134,6 +152,7 @@ router.post('/login', async (req, res) => {
       message: 'Two-factor authentication required. Please verify your 2FA code.',
     });
   } catch (err) {
+    console.error('[LOGIN ERROR]', err);
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
@@ -170,6 +189,7 @@ router.post('/send-2fa', async (req, res) => {
 
     res.json({ success: true, message: '2FA code sent successfully' });
   } catch (err) {
+    console.error('[SEND 2FA ERROR]', err);
     res.status(500).json({ error: 'Failed to send 2FA code', details: err.message });
   }
 });
@@ -215,6 +235,7 @@ router.post('/verify-2fa', async (req, res) => {
 
     res.json({ success: true, token, message: '2FA verified successfully' });
   } catch (err) {
+    console.error('[VERIFY 2FA ERROR]', err);
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
 });
