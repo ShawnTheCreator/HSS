@@ -2,12 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const User = require('../models/User'); // adjust the path as needed
+const User = require('../models/User');
 require('dotenv').config();
 
 const router = express.Router();
 
-// Nodemailer transporter
+// Email transporter
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
@@ -16,29 +16,60 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// @route   POST /api/auth/register
+// @route POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
     const { full_name, email, password } = req.body;
 
     if (!full_name || !email || !password) {
-      return res.status(400).json({ error: 'Full name, email and password are required' });
+      return res.status(400).json({ error: 'Full name, email, and password are required' });
     }
 
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ error: 'User already exists' });
 
     const hashed = await bcrypt.hash(password, 10);
-    const newUser = new User({ full_name, email, password: hashed });
+    const newUser = new User({
+      full_name,
+      email,
+      password: hashed,
+      isApproved: false,
+    });
+
     await newUser.save();
 
-    res.status(201).json({ success: true, message: 'User registered successfully' });
+    const token = jwt.sign(
+      { userId: newUser._id },
+      process.env.JWT_SECRET || 'verify-secret',
+      { expiresIn: '15m' }
+    );
+
+    const verificationLink = `https://healthcaresecuresystem.netlify.app/verify?token=${token}`;
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Confirm your registration with HSS',
+      html: `
+        <p>Hello ${full_name},</p>
+        <p>Thank you for registering on the HSS platform.</p>
+        <p>Your account will be reviewed by the HSS admin team. You’ll be notified once your account is approved.</p>
+        <p>If this wasn't you, please ignore this email.</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful. Please wait for admin approval.',
+    });
   } catch (err) {
     res.status(500).json({ error: 'Registration failed', details: err.message });
   }
 });
 
-// @route   POST /api/auth/login
+// @route POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -52,6 +83,10 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
 
+    if (!user.isApproved) {
+      return res.status(403).json({ error: 'Account not approved by admin yet' });
+    }
+
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'secret',
@@ -64,7 +99,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/send-2fa
+// @route POST /api/auth/send-2fa
 router.post('/send-2fa', async (req, res) => {
   try {
     const { email } = req.body;
@@ -74,7 +109,7 @@ router.post('/send-2fa', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     user.twoFA_code = code;
     user.twoFA_expires = expires;
@@ -100,7 +135,7 @@ router.post('/send-2fa', async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/verify-2fa
+// @route POST /api/auth/verify-2fa
 router.post('/verify-2fa', async (req, res) => {
   try {
     const { email, code } = req.body;
