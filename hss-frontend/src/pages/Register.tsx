@@ -20,7 +20,6 @@ import axios from "axios";
 import ReCAPTCHA from "react-google-recaptcha";
 import DOMPurify from "dompurify";
 
-// Device fingerprinting function
 const generateDeviceFingerprint = (): string => {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -49,7 +48,6 @@ const generateDeviceFingerprint = (): string => {
   return btoa(JSON.stringify(fingerprint)).slice(0, 64);
 };
 
-// GPS-based location detection
 const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -76,7 +74,6 @@ const getGPSCoordinates = (): Promise<{ lat: number; lon: number }> => {
   });
 };
 
-// Reverse geocoding to get address from coordinates
 const getAddressFromCoordinates = async (
   lat: number,
   lon: number
@@ -192,142 +189,91 @@ const Register = () => {
     initializeSecurityData();
   }, []);
 
-// Replace your onSubmit function with this enhanced version for better error handling
-
-const onSubmit = async (data: FormValues) => {
-  if (!recaptchaToken) {
-    toast({
-      title: "reCAPTCHA Required",
-      description: "Please complete the reCAPTCHA verification",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  if (!gpsCoordinates) {
-    toast({
-      title: "Location Access Required",
-      description: "Please enable GPS to continue with registration",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsLoading(true);
-  
-  try {
-    console.log('=== FRONTEND REGISTRATION START ===');
-    
-    const registrationData = {
-      hospital_name: DOMPurify.sanitize(data.hospitalName),
-      province: data.province,
-      city: DOMPurify.sanitize(data.city),
-      contact_person_name: DOMPurify.sanitize(data.contactPersonName),
-      email: DOMPurify.sanitize(data.email),
-      email_id: DOMPurify.sanitize(data.emailId),
-      phone_number: DOMPurify.sanitize(data.phoneNumber),
-      password: data.password,
-      device_fingerprint: deviceFingerprint,
-      gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
-      location_address: locationAddress,
-      recaptcha_token: recaptchaToken,
-    };
-
-    console.log('Registration data prepared:', {
-      ...registrationData,
-      password: '[REDACTED]',
-      recaptcha_token: '[REDACTED]'
-    });
-
-    console.log('Sending request to backend...');
-    const response = await axios.post(
-      "https://hss-backend.onrender.com/api/auth/register",
-      registrationData,
-      { 
-        headers: { 
-          "Content-Type": "application/json" 
-        },
-        timeout: 30000 // 30 second timeout
-      }
-    );
-
-    console.log('Backend response:', response);
-
-    if (response.status === 201) {
+  const onSubmit = async (data: FormValues) => {
+    if (!recaptchaToken) {
       toast({
-        title: "Registration Successful",
-        description: response.data.message || "Account created successfully",
+        title: "reCAPTCHA Required",
+        description: "Please complete the reCAPTCHA verification",
+        variant: "destructive",
       });
-      navigate("/login");
+      return;
     }
-  } catch (error) {
-    console.error('=== FRONTEND REGISTRATION ERROR ===');
-    console.error('Error object:', error);
-    
-    // Reset reCAPTCHA on any error
-    recaptchaRef.current?.reset();
-    setRecaptchaToken(null);
 
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error details:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          timeout: error.config?.timeout
-        }
+    if (!gpsCoordinates) {
+      toast({
+        title: "Location Access Required",
+        description: "Please enable GPS to continue with registration",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      console.log('=== FRONTEND REGISTRATION START ===');
+      
+      const registrationData = {
+        hospital_name: DOMPurify.sanitize(data.hospitalName),
+        province: data.province,
+        city: DOMPurify.sanitize(data.city),
+        contact_person_name: DOMPurify.sanitize(data.contactPersonName),
+        email: DOMPurify.sanitize(data.email),
+        email_id: DOMPurify.sanitize(data.emailId),
+        phone_number: DOMPurify.sanitize(data.phoneNumber),
+        password: data.password,
+        device_fingerprint: deviceFingerprint,
+        gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
+        location_address: locationAddress,
+        recaptcha_token: recaptchaToken,
+      };
+
+      console.log('Registration data prepared:', {
+        ...registrationData,
+        password: '[REDACTED]',
+        recaptcha_token: '[REDACTED]'
       });
 
-      // Handle specific error statuses
-      if (error.response?.status === 500) {
+      const response = await axios.post(
+        "https://hss-backend.onrender.com/api/auth/register",
+        registrationData,
+        { 
+          headers: { 
+            "Content-Type": "application/json" 
+          },
+          timeout: 30000
+        }
+      );
+
+      if (response.status === 201) {
         toast({
-          title: "Server Error",
-          description: "Internal server error occurred. Please try again later or contact support.",
-          variant: "destructive",
+          title: "Registration Successful",
+          description: response.data.message || "Account created successfully",
         });
-      } else if (error.response?.status === 400) {
-        const errorMessage = error.response?.data?.error || "Invalid data provided";
-        const errorDetails = error.response?.data?.details;
-        
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      recaptchaRef.current?.reset();
+      setRecaptchaToken(null);
+
+      if (axios.isAxiosError(error)) {
         toast({
           title: "Registration Failed",
-          description: errorDetails ? `${errorMessage}: ${JSON.stringify(errorDetails)}` : errorMessage,
-          variant: "destructive",
-        });
-      } else if (error.code === 'ECONNABORTED') {
-        toast({
-          title: "Request Timeout",
-          description: "The request took too long. Please check your connection and try again.",
-          variant: "destructive",
-        });
-      } else if (error.code === 'ERR_NETWORK') {
-        toast({
-          title: "Network Error",
-          description: "Unable to connect to the server. Please check your internet connection.",
+          description: error.response?.data?.error || "An error occurred during registration",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Registration Failed",
-          description: error.response?.data?.error || error.message || "An error occurred",
+          description: "An unexpected error occurred. Please try again.",
           variant: "destructive",
         });
       }
-    } else {
-      console.error('Non-axios error:', error);
-      toast({
-        title: "Registration Failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+    } finally {
+      setIsLoading(false);
     }
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <AuthCard
