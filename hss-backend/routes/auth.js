@@ -16,8 +16,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// @route POST 
-router.post('/api/auth/register', async (req, res) => {
+// @route POST /api/auth/register
+router.post('/register', async (req, res) => {
   try {
     const {
       hospital_name,
@@ -35,22 +35,16 @@ router.post('/api/auth/register', async (req, res) => {
     } = req.body;
 
     if (
-      !hospital_name ||
-      !province ||
-      !city ||
-      !contact_person_name ||
-      !email ||
-      !email_id ||
-      !phone_number ||
-      !password
+      !hospital_name || !province || !city || !contact_person_name ||
+      !email || !email_id || !phone_number || !password
     ) {
       return res.status(400).json({ error: 'Please fill all required fields' });
     }
 
-    // Check for existing user by email_id (unique login)
     const existing = await User.findOne({ emailId: email_id });
-    if (existing)
+    if (existing) {
       return res.status(400).json({ error: 'User already exists with this email ID' });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -65,8 +59,8 @@ router.post('/api/auth/register', async (req, res) => {
       password: hashed,
       device_fingerprint,
       location_zone: location_address,
+      gps_coordinates,
       isApproved: false,
-      // biometric_hash can be added if collected
     });
 
     await newUser.save();
@@ -102,13 +96,14 @@ router.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// @route POST 
-router.post('/api/auth/login', async (req, res) => {
+// @route POST /api/auth/login
+router.post('/login', async (req, res) => {
   try {
     const { email_id, password } = req.body;
 
-    if (!email_id || !password)
+    if (!email_id || !password) {
       return res.status(400).json({ error: 'Email ID and password are required' });
+    }
 
     const user = await User.findOne({ emailId: email_id });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -121,13 +116,11 @@ router.post('/api/auth/login', async (req, res) => {
     }
 
     // Clear any previous 2FA codes
-    if (user.twoFA_code) {
-      user.twoFA_code = undefined;
-      user.twoFA_expires = undefined;
-      await user.save();
-    }
+    user.twoFA_code = undefined;
+    user.twoFA_expires = undefined;
+    await user.save();
 
-    // Issue temporary token for 2FA verification
+    // Temporary token for 2FA verification
     const tempToken = jwt.sign(
       { userId: user._id, twoFAPending: true },
       process.env.JWT_SECRET || 'secret',
@@ -155,7 +148,7 @@ router.post('/send-2fa', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+    const expires = new Date(Date.now() + 10 * 60 * 1000);
 
     user.twoFA_code = code;
     user.twoFA_expires = expires;
