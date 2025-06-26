@@ -16,8 +16,8 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// @route POST /api/auth/register
-router.post('/register', async (req, res) => {
+// @route POST 
+router.post('/api/auth/register', async (req, res) => {
   try {
     const {
       hospital_name,
@@ -102,8 +102,8 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// @route POST /api/auth/login
-router.post('/login', async (req, res) => {
+// @route POST 
+router.post('/api/auth/login', async (req, res) => {
   try {
     const { email_id, password } = req.body;
 
