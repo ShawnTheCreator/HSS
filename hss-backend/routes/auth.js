@@ -20,9 +20,12 @@ const transporter = nodemailer.createTransport({
 router.post('/register', async (req, res) => {
   try {
     const {
-      full_name,
+      hospital_name,
+      province,
+      city,
+      contact_person_name,
       email,
-      emailId,
+      email_id,
       phone_number,
       password,
       device_fingerprint,
@@ -31,24 +34,39 @@ router.post('/register', async (req, res) => {
       recaptcha_token,
     } = req.body;
 
-    if (!full_name || !email || !emailId || !password) {
-      return res.status(400).json({ error: 'Full name, email, emailId, and password are required' });
+    if (
+      !hospital_name ||
+      !province ||
+      !city ||
+      !contact_person_name ||
+      !email ||
+      !email_id ||
+      !phone_number ||
+      !password
+    ) {
+      return res.status(400).json({ error: 'Please fill all required fields' });
     }
 
-    const existing = await User.findOne({ emailId });
-    if (existing) return res.status(400).json({ error: 'User already exists with that emailId' });
+    // Check for existing user by email_id (unique login)
+    const existing = await User.findOne({ emailId: email_id });
+    if (existing)
+      return res.status(400).json({ error: 'User already exists with this email ID' });
 
     const hashed = await bcrypt.hash(password, 10);
+
     const newUser = new User({
-      full_name,
+      hospital_name,
+      province,
+      city,
+      contact_person_name,
       email,
-      emailId,
+      emailId: email_id,
       phone_number,
       password: hashed,
       device_fingerprint,
       location_zone: location_address,
-      biometric_hash: '', // you can add biometric hash if you collect it
       isApproved: false,
+      // biometric_hash can be added if collected
     });
 
     await newUser.save();
@@ -66,8 +84,8 @@ router.post('/register', async (req, res) => {
       to: email,
       subject: 'Confirm your registration with HSS',
       html: `
-        <p>Hello ${full_name},</p>
-        <p>Thank you for registering on the HSS platform.</p>
+        <p>Hello ${contact_person_name},</p>
+        <p>Thank you for registering your hospital on the HSS platform.</p>
         <p>Your account will be reviewed by the HSS admin team. You’ll be notified once your account is approved.</p>
         <p>If this wasn't you, please ignore this email.</p>
       `,
@@ -87,12 +105,12 @@ router.post('/register', async (req, res) => {
 // @route POST /api/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { emailId, password } = req.body;
+    const { email_id, password } = req.body;
 
-    if (!emailId || !password)
+    if (!email_id || !password)
       return res.status(400).json({ error: 'Email ID and password are required' });
 
-    const user = await User.findOne({ emailId });
+    const user = await User.findOne({ emailId: email_id });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -102,14 +120,14 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Account not approved by admin yet' });
     }
 
-    // Clear any existing 2FA codes
+    // Clear any previous 2FA codes
     if (user.twoFA_code) {
       user.twoFA_code = undefined;
       user.twoFA_expires = undefined;
       await user.save();
     }
 
-    // Send temporary token requiring 2FA verification
+    // Issue temporary token for 2FA verification
     const tempToken = jwt.sign(
       { userId: user._id, twoFAPending: true },
       process.env.JWT_SECRET || 'secret',
@@ -130,15 +148,14 @@ router.post('/login', async (req, res) => {
 // @route POST /api/auth/send-2fa
 router.post('/send-2fa', async (req, res) => {
   try {
-    const { emailId } = req.body;
-    if (!emailId) return res.status(400).json({ error: 'Email ID is required' });
+    const { email_id } = req.body;
+    if (!email_id) return res.status(400).json({ error: 'Email ID is required' });
 
-    const user = await User.findOne({ emailId });
+    const user = await User.findOne({ emailId: email_id });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Generate 6-digit code and expiry (10 minutes)
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
     user.twoFA_code = code;
     user.twoFA_expires = expires;
@@ -149,7 +166,7 @@ router.post('/send-2fa', async (req, res) => {
       to: user.email,
       subject: 'Your HSS 2FA Code',
       html: `
-        <p>Hi ${user.full_name || 'User'},</p>
+        <p>Hi ${user.contact_person_name || 'User'},</p>
         <p>Your 2FA verification code is:</p>
         <h2 style="color: #4a6fa5;">${code}</h2>
         <p>This code will expire in 10 minutes.</p>
@@ -167,11 +184,10 @@ router.post('/send-2fa', async (req, res) => {
 // @route POST /api/auth/verify-2fa
 router.post('/verify-2fa', async (req, res) => {
   try {
-    const { emailId, code, tempToken } = req.body;
-    if (!emailId || !code || !tempToken)
+    const { email_id, code, tempToken } = req.body;
+    if (!email_id || !code || !tempToken)
       return res.status(400).json({ error: 'Email ID, code, and token are required' });
 
-    // Verify the temporary token
     let decoded;
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'secret');
@@ -182,7 +198,7 @@ router.post('/verify-2fa', async (req, res) => {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
 
-    const user = await User.findOne({ emailId });
+    const user = await User.findOne({ emailId: email_id });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     if (!user.twoFA_code || !user.twoFA_expires)
@@ -194,12 +210,10 @@ router.post('/verify-2fa', async (req, res) => {
     if (user.twoFA_code !== code)
       return res.status(400).json({ error: 'Invalid 2FA code' });
 
-    // Clear 2FA code fields
     user.twoFA_code = undefined;
     user.twoFA_expires = undefined;
     await user.save();
 
-    // Issue full JWT token for authorized sessions
     const token = jwt.sign(
       { userId: user._id, role: user.role },
       process.env.JWT_SECRET || 'secret',
