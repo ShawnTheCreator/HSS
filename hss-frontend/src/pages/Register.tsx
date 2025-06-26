@@ -192,76 +192,142 @@ const Register = () => {
     initializeSecurityData();
   }, []);
 
-  const onSubmit = async (data: FormValues) => {
-    if (!recaptchaToken) {
-      toast({
-        title: "reCAPTCHA Required",
-        description: "Please complete the reCAPTCHA verification",
-        variant: "destructive",
-      });
-      return;
-    }
+// Replace your onSubmit function with this enhanced version for better error handling
 
-    if (!gpsCoordinates) {
-      toast({
-        title: "Location Access Required",
-        description: "Please enable GPS to continue with registration",
-        variant: "destructive",
-      });
-      return;
-    }
+const onSubmit = async (data: FormValues) => {
+  if (!recaptchaToken) {
+    toast({
+      title: "reCAPTCHA Required",
+      description: "Please complete the reCAPTCHA verification",
+      variant: "destructive",
+    });
+    return;
+  }
 
-    setIsLoading(true);
-    try {
-      const registrationData = {
-        hospital_name: DOMPurify.sanitize(data.hospitalName),
-        province: data.province,
-        city: DOMPurify.sanitize(data.city),
-        contact_person_name: DOMPurify.sanitize(data.contactPersonName),
-        email: DOMPurify.sanitize(data.email),
-        email_id: DOMPurify.sanitize(data.emailId),
-        phone_number: DOMPurify.sanitize(data.phoneNumber),
-        password: data.password,
-        device_fingerprint: deviceFingerprint,
-        gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
-        location_address: locationAddress,
-        recaptcha_token: recaptchaToken,
-      };
+  if (!gpsCoordinates) {
+    toast({
+      title: "Location Access Required",
+      description: "Please enable GPS to continue with registration",
+      variant: "destructive",
+    });
+    return;
+  }
 
-      const response = await axios.post(
-        "https://hss-backend.onrender.com/api/auth/register",
-        registrationData,
-        { headers: { "Content-Type": "application/json" } }
-      );
+  setIsLoading(true);
+  
+  try {
+    console.log('=== FRONTEND REGISTRATION START ===');
+    
+    const registrationData = {
+      hospital_name: DOMPurify.sanitize(data.hospitalName),
+      province: data.province,
+      city: DOMPurify.sanitize(data.city),
+      contact_person_name: DOMPurify.sanitize(data.contactPersonName),
+      email: DOMPurify.sanitize(data.email),
+      email_id: DOMPurify.sanitize(data.emailId),
+      phone_number: DOMPurify.sanitize(data.phoneNumber),
+      password: data.password,
+      device_fingerprint: deviceFingerprint,
+      gps_coordinates: `${gpsCoordinates.lat},${gpsCoordinates.lon}`,
+      location_address: locationAddress,
+      recaptcha_token: recaptchaToken,
+    };
 
-      if (response.status === 201) {
-        toast({
-          title: "Registration Successful",
-          description: response.data.msg || "Account created successfully",
-        });
-        navigate("/login");
+    console.log('Registration data prepared:', {
+      ...registrationData,
+      password: '[REDACTED]',
+      recaptcha_token: '[REDACTED]'
+    });
+
+    console.log('Sending request to backend...');
+    const response = await axios.post(
+      "https://hss-backend.onrender.com/api/auth/register",
+      registrationData,
+      { 
+        headers: { 
+          "Content-Type": "application/json" 
+        },
+        timeout: 30000 // 30 second timeout
       }
-    } catch (error) {
-      recaptchaRef.current?.reset();
-      setRecaptchaToken(null);
+    );
 
-      if (axios.isAxiosError(error)) {
+    console.log('Backend response:', response);
+
+    if (response.status === 201) {
+      toast({
+        title: "Registration Successful",
+        description: response.data.message || "Account created successfully",
+      });
+      navigate("/login");
+    }
+  } catch (error) {
+    console.error('=== FRONTEND REGISTRATION ERROR ===');
+    console.error('Error object:', error);
+    
+    // Reset reCAPTCHA on any error
+    recaptchaRef.current?.reset();
+    setRecaptchaToken(null);
+
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          timeout: error.config?.timeout
+        }
+      });
+
+      // Handle specific error statuses
+      if (error.response?.status === 500) {
+        toast({
+          title: "Server Error",
+          description: "Internal server error occurred. Please try again later or contact support.",
+          variant: "destructive",
+        });
+      } else if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.error || "Invalid data provided";
+        const errorDetails = error.response?.data?.details;
+        
         toast({
           title: "Registration Failed",
-          description: error.response?.data?.error || "An error occurred",
+          description: errorDetails ? `${errorMessage}: ${JSON.stringify(errorDetails)}` : errorMessage,
+          variant: "destructive",
+        });
+      } else if (error.code === 'ECONNABORTED') {
+        toast({
+          title: "Request Timeout",
+          description: "The request took too long. Please check your connection and try again.",
+          variant: "destructive",
+        });
+      } else if (error.code === 'ERR_NETWORK') {
+        toast({
+          title: "Network Error",
+          description: "Unable to connect to the server. Please check your internet connection.",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Registration Failed",
-          description: "An unexpected error occurred",
+          description: error.response?.data?.error || error.message || "An error occurred",
           variant: "destructive",
         });
       }
-    } finally {
-      setIsLoading(false);
+    } else {
+      console.error('Non-axios error:', error);
+      toast({
+        title: "Registration Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
-  };
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <AuthCard
