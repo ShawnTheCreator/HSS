@@ -135,13 +135,13 @@ const Login = () => {
       return;
     }
 
-    if (data.email === "Bandile@hss.com" && data.password === "Admin1234") {
+    if (data.email === "BandilehssSOC" && data.password === "Admin1234") {
       toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
       navigate("/dashboard");
       return;
     }
 
-     if (data.email === "Shawn@hss.com" && data.password === "Admin1234") {
+     if (data.email === "ShawnhssTechLead" && data.password === "Admin1234") {
       toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
       navigate("/dashboard");
       return;
