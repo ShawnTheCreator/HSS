@@ -66,14 +66,30 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     gps_coordinates: {
-      type: String, // storing as "lat,lon" string, or can use { lat: Number, lon: Number } subdoc
+      type: String, // Example: "lat,lon"
       trim: true,
     },
     location_address: {
       type: String,
       trim: true,
     },
-    // You can add isApproved or 2FA fields if desired, or keep them out for now
+    isApproved: {
+      type: Boolean,
+      default: false,
+    },
+    twoFA_code: {
+      type: String,
+      default: null,
+    },
+    twoFA_expires: {
+      type: Date,
+      default: null,
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      default: 'user',
+    }
   },
   { timestamps: true }
 );
