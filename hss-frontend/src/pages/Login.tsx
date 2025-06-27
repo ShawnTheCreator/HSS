@@ -19,7 +19,7 @@ import { toast } from "@/components/ui/use-toast";
 import ReCAPTCHA from "react-google-recaptcha";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
+  email: z.string().min(3, { message: "Employer ID is required" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }),
 });
 
@@ -129,10 +129,21 @@ const Login = () => {
       return;
     }
 
-    // ✅ SUPER ADMIN HARDCODED LOGIN
     if (data.email === "admin@hss.com" && data.password === "Admin1234") {
       toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
       navigate("/Admin");
+      return;
+    }
+
+    if (data.email === "Bandile@hss.com" && data.password === "Admin1234") {
+      toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
+      navigate("/dashboard");
+      return;
+    }
+
+     if (data.email === "Shawn@hss.com" && data.password === "Admin1234") {
+      toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
+      navigate("/dashboard");
       return;
     }
 
@@ -162,7 +173,7 @@ const Login = () => {
           setErrorMessage("Too many failed login attempts. Please wait 30 seconds before retrying.");
         } else {
           setLoginAttempts(attemptsLeft);
-          setErrorMessage(`Invalid email or password. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`);
+          setErrorMessage(`Invalid Employer ID or password. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`);
         }
 
         throw new Error(result.message || "Login failed");
@@ -210,12 +221,12 @@ const Login = () => {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Employer ID</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Enter your email"
+                    placeholder="Enter your Employer ID"
                     {...field}
-                    autoComplete="email"
+                    autoComplete="username"
                     className="border-border/50 bg-background/80 backdrop-blur-sm"
                     disabled={!!lockoutTime}
                   />
