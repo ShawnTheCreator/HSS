@@ -117,15 +117,32 @@ const Sidebar = () => {
       
       <div className="p-4 border-t border-sidebar-border">
         <Button
-          variant="ghost"
-          className={cn(
-            "w-full flex items-center justify-start px-4 py-2 text-sidebar-foreground hover:bg-sidebar-accent",
-            collapsed && "justify-center"
-          )}
-        >
-          <LogOut className="h-5 w-5" />
-          {!collapsed && <span className="ml-3 text-sm font-medium">Logout</span>}
-        </Button>
+  variant="ghost"
+  className={cn(
+    "w-full flex items-center justify-start px-4 py-2 text-sidebar-foreground hover:bg-sidebar-accent",
+    collapsed && "justify-center"
+  )}
+  onClick={async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        // Optional: clear local state or auth context here if needed
+        window.location.href = '/login'; // 👈 redirect after logout
+      } else {
+        console.error('Logout failed');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  }}
+>
+  <LogOut className="h-5 w-5" />
+  {!collapsed && <span className="ml-3 text-sm font-medium">Logout</span>}
+</Button>
       </div>
     </div>
   );

@@ -257,7 +257,15 @@ router.post('/verify-2fa', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    res.json({ success: true, token });
+   res
+  .cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+    maxAge: 60 * 60 * 1000, // 1 hour
+  })
+  .json({ success: true, message: '2FA verified successfully' });
+
   } catch (err) {
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
@@ -281,5 +289,16 @@ router.post('/geocode', async (req, res) => {
     res.status(500).json({ error: 'Geocoding failed' });
   }
 });
+
+//logout
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict', // or 'Lax' based on your frontend setup
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
 
 module.exports = router;
