@@ -125,7 +125,7 @@ router.post('/register', async (req, res) => {
       subject: 'Confirm your registration with HSS',
       html: `
         <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
-          <img src="https://yourdomain.com/logo.png" alt="HSS Logo" style="height:50px;margin-bottom:20px">
+          <img src="../Banner.png" alt="HSS Logo" style="height:50px;margin-bottom:20px">
           <p>Hello ${contact_person_name},</p>
           <p>Thank you for registering your hospital on the HSS platform.</p>
           <p>Your account will be reviewed by the HSS admin team. You'll be notified once your account is approved.</p>
