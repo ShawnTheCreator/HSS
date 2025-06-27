@@ -37,7 +37,7 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await fetch("https://hss-backend.onrender.com/api/admin/users", {
+      const res = await fetch("https://hss-backend.onrender.com/api/auth/admin/users", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -51,10 +51,12 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleApproval = async (id: string) => {
+  const handleApproval = async (id: string, action: "approve" | "reject" | "unapprove") => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`https://hss-backend.onrender.com/api/admin/approve/${id}`, {
+      const endpoint = `https://hss-backend.onrender.com/api/auth/admin/users/${id}/${action}`;
+
+      const res = await fetch(endpoint, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -62,12 +64,19 @@ const AdminDashboard = () => {
         },
       });
 
-      if (!res.ok) throw new Error("Failed to approve user");
+      if (!res.ok) throw new Error("Failed to update user approval status");
 
-      toast({ title: "Success", description: "User approved successfully" });
+      let message =
+        action === "approve"
+          ? "User approved successfully"
+          : action === "reject"
+          ? "User rejected successfully"
+          : "User unapproved successfully";
+
+      toast({ title: "Success", description: message });
       fetchUsers();
     } catch (err) {
-      toast({ title: "Error", description: "Approval failed", variant: "destructive" });
+      toast({ title: "Error", description: "Approval update failed", variant: "destructive" });
     }
   };
 
@@ -149,11 +158,30 @@ const AdminDashboard = () => {
                       <strong>Contact:</strong> {user.contactPersonName} <br />
                       <strong>Address:</strong> {user.location_address}
                     </div>
-                    {!user.isApproved && (
-                      <Button onClick={() => handleApproval(user._id)} className="mt-2 w-full">
-                        Approve
-                      </Button>
-                    )}
+                    <div className="flex gap-2 mt-2">
+                      {!user.isApproved ? (
+                        <>
+                          <Button onClick={() => handleApproval(user._id, "approve")} className="w-full">
+                            Approve
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => handleApproval(user._id, "reject")}
+                            className="w-full"
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleApproval(user._id, "unapprove")}
+                          className="w-full"
+                        >
+                          Unapprove
+                        </Button>
+                      )}
+                    </div>
                   </Card>
                 </motion.div>
               ))}
