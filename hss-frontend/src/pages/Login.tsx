@@ -52,9 +52,7 @@ const Login = () => {
     const storedAttempts = localStorage.getItem(ATTEMPTS_KEY);
     const storedLockout = localStorage.getItem(LOCKOUT_KEY);
 
-    if (storedAttempts) {
-      setLoginAttempts(parseInt(storedAttempts, 10));
-    }
+    if (storedAttempts) setLoginAttempts(parseInt(storedAttempts, 10));
 
     if (storedLockout) {
       const lockoutDate = new Date(storedLockout);
@@ -88,9 +86,7 @@ const Login = () => {
         setLockoutTime(null);
         setLoginAttempts(3);
         setErrorMessage("");
-        if (recaptchaRef.current) {
-          recaptchaRef.current.reset();
-        }
+        recaptchaRef.current?.reset();
         setRecaptchaToken(null);
         if (timerRef.current) clearInterval(timerRef.current);
       }
@@ -101,9 +97,7 @@ const Login = () => {
     };
   }, [lockoutTime]);
 
-  const handleRecaptchaChange = (token: string | null) => {
-    setRecaptchaToken(token);
-  };
+  const handleRecaptchaChange = (token: string | null) => setRecaptchaToken(token);
 
   const handleRecaptchaExpired = () => {
     setRecaptchaToken(null);
@@ -140,27 +134,21 @@ const Login = () => {
 
     try {
       const payload = {
-        email_id: data.email, // 🔥 Fix: map correctly to backend requirement
+        email_id: data.email,
         password: data.password,
         recaptcha_token: recaptchaToken,
       };
 
-      console.log("Submitting login payload:", payload);
-
       const response = await fetch("https://hss-backend.onrender.com/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        if (recaptchaRef.current) {
-          recaptchaRef.current.reset();
-        }
+        recaptchaRef.current?.reset();
         setRecaptchaToken(null);
 
         const attemptsLeft = loginAttempts - 1;
@@ -173,6 +161,7 @@ const Login = () => {
           setLoginAttempts(attemptsLeft);
           setErrorMessage(`Invalid email or password. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left.`);
         }
+
         throw new Error(result.message || "Login failed");
       }
 
@@ -184,11 +173,7 @@ const Login = () => {
         localStorage.setItem("token", result.token);
       }
 
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-
+      toast({ title: "Login Successful", description: "Welcome back!" });
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error.message || error);
@@ -236,6 +221,7 @@ const Login = () => {
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
             name="password"
@@ -273,7 +259,12 @@ const Login = () => {
             )}
           />
 
-          <div className="flex justify-center">
+          {/* CAPTCHA with blur effect on lockout */}
+          <div
+            className={`flex justify-center transition-all duration-300 ${
+              lockoutTime ? "blur-sm pointer-events-none opacity-50" : ""
+            }`}
+          >
             <ReCAPTCHA
               ref={recaptchaRef}
               sitekey={RECAPTCHA_SITE_KEY}
@@ -300,6 +291,7 @@ const Login = () => {
               Forgot your password?
             </Link>
           </div>
+
           <Button
             type="submit"
             className="w-full bg-hss-purple-vivid hover:bg-hss-purple-vivid/90"
