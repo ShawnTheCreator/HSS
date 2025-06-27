@@ -32,15 +32,6 @@ const mapRequestToUserSchema = (body) => ({
   location_address: body.location_address,
 });
 
-// Logging middleware
-router.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Request body keys:', Object.keys(req.body));
-  }
-  next();
-});
-
 // ===============================
 // ADMIN ROUTES
 // ===============================
@@ -70,25 +61,21 @@ router.patch('/admin/users/:id/approve', async (req, res) => {
       subject: 'Your HSS account has been approved!',
       html: `
         <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
-          <img src="https://yourdomain.com/logo.png" alt="HSS Logo" style="height:50px;margin-bottom:20px">
           <h2>Welcome to HSS</h2>
           <p>Hello ${user.contactPersonName},</p>
-          <p>Your hospital account has been <strong>approved</strong> by the HSS Admin team.</p>
-          <p>You can now log in and access the HSS system.</p>
-          <p style="color:#999;font-size:12px">If you didn’t request this, please contact support.</p>
+          <p>Your hospital account has been <strong>approved</strong>.</p>
         </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-
     res.json({ success: true, message: 'User approved and email sent' });
   } catch (err) {
     res.status(500).json({ error: 'Approval failed', details: err.message });
   }
 });
 
-// Reject user
+// Reject user (delete)
 router.patch('/admin/users/:id/reject', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -99,26 +86,24 @@ router.patch('/admin/users/:id/reject', async (req, res) => {
     const mailOptions = {
       from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: 'Your HSS account was not approved',
+      subject: 'HSS account not approved',
       html: `
-        <div style="font-family:Arial,sans-serif;border:1px solid #f5c6cb;padding:20px;border-radius:10px;background-color:#f8d7da">
-          <h2 style="color:#721c24">HSS Registration Update</h2>
+        <div style="font-family:Arial,sans-serif;border:1px solid #f5c6cb;padding:20px;background:#f8d7da">
+          <h2>HSS Registration Rejected</h2>
           <p>Hello ${user.contactPersonName},</p>
-          <p>Unfortunately, your hospital registration on the HSS platform was <strong>not approved</strong>.</p>
-          <p>If you believe this was a mistake or need further clarification, please contact our support team.</p>
+          <p>Unfortunately, your registration was <strong>not approved</strong>.</p>
         </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-
-    res.json({ success: true, message: 'User rejected and email sent' });
+    res.json({ success: true, message: 'User rejected and deleted' });
   } catch (err) {
     res.status(500).json({ error: 'Rejection failed', details: err.message });
   }
 });
 
-// Revoke approval
+// Unapprove user (reverse approval)
 router.patch('/admin/users/:id/unapprove', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -127,12 +112,25 @@ router.patch('/admin/users/:id/unapprove', async (req, res) => {
     user.isApproved = false;
     await user.save();
 
-    res.json({ success: true, message: 'User approval revoked' });
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'HSS account status changed',
+      html: `
+        <div style="font-family:Arial,sans-serif;border:1px solid #ffeeba;padding:20px;background:#fff3cd">
+          <h2>Account Unapproved</h2>
+          <p>Hello ${user.contactPersonName},</p>
+          <p>Your HSS account approval has been <strong>revoked</strong>.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: 'User unapproved and email sent' });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to revoke approval', details: err.message });
+    res.status(500).json({ error: 'Unapproval failed', details: err.message });
   }
 });
-
 
 // ===============================
 // REGISTER
@@ -171,18 +169,14 @@ router.post('/register', async (req, res) => {
       subject: 'Confirm your registration with HSS',
       html: `
         <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
-          <img src="https://i.imgur.com/EbIb893.png" style="width: 600px; max-width: 100%; height: auto; display: block; margin: 0 auto;">
           <p>Hello ${contact_person_name},</p>
-          <p>Thank you for registering your hospital on the HSS platform.</p>
-          <p>Your account will be reviewed by the HSS admin team. You'll be notified once your account is approved.</p>
-          <p style="color:#999;font-size:12px">If this wasn't you, please ignore this email.</p>
+          <p>Thank you for registering. You'll be notified once approved.</p>
         </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
-
-    res.status(201).json({ success: true, message: 'Registration successful. Await admin approval.' });
+    res.status(201).json({ success: true, message: 'Registered. Await approval.' });
   } catch (err) {
     res.status(500).json({ error: 'Registration failed', details: err.message });
   }
@@ -199,7 +193,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
 
     if (!user.isApproved)
-      return res.status(403).json({ error: 'Account not approved by admin yet' });
+      return res.status(403).json({ error: 'Account not approved yet' });
 
     const tempToken = jwt.sign(
       { userId: user._id, twoFAPending: true },
@@ -207,12 +201,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '10m' }
     );
 
-    res.json({
-      success: true,
-      twoFARequired: true,
-      tempToken,
-      message: '2FA code sent. Verify your identity.',
-    });
+    res.json({ success: true, twoFARequired: true, tempToken });
   } catch (err) {
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
@@ -225,6 +214,7 @@ router.post('/send-2fa', async (req, res) => {
   try {
     const { email_id } = req.body;
     const user = await User.findOne({ emailId: email_id });
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -236,17 +226,10 @@ router.post('/send-2fa', async (req, res) => {
       from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: 'Your HSS 2FA Code',
-      html: `
-        <div style="font-family:Arial,sans-serif">
-          <p>Hi ${user.contactPersonName || 'User'},</p>
-          <p>Your 2FA verification code is:</p>
-          <h2>${code}</h2>
-          <p>This code will expire in 10 minutes.</p>
-        </div>
-      `,
+      html: `<p>Your verification code is: <strong>${code}</strong></p>`,
     });
 
-    res.json({ success: true, message: '2FA code sent successfully' });
+    res.json({ success: true, message: '2FA code sent' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to send 2FA code', details: err.message });
   }
@@ -259,11 +242,10 @@ router.post('/verify-2fa', async (req, res) => {
   try {
     const { email_id, code, tempToken } = req.body;
     const decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'secret');
-    if (!decoded.twoFAPending) return res.status(401).json({ error: 'Invalid 2FA token' });
 
     const user = await User.findOne({ emailId: email_id });
     if (!user || user.twoFA_code !== code || new Date() > user.twoFA_expires)
-      return res.status(400).json({ error: 'Invalid or expired 2FA code' });
+      return res.status(400).json({ error: 'Invalid or expired code' });
 
     user.twoFA_code = undefined;
     user.twoFA_expires = undefined;
@@ -275,7 +257,7 @@ router.post('/verify-2fa', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    res.json({ success: true, token, message: '2FA verified successfully' });
+    res.json({ success: true, token });
   } catch (err) {
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
@@ -286,7 +268,7 @@ router.post('/verify-2fa', async (req, res) => {
 // ===============================
 router.post('/geocode', async (req, res) => {
   const { lat, lon } = req.body;
-  if (!lat || !lon) return res.status(400).json({ error: 'Missing latitude or longitude' });
+  if (!lat || !lon) return res.status(400).json({ error: 'Missing coordinates' });
 
   try {
     const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
@@ -296,7 +278,7 @@ router.post('/geocode', async (req, res) => {
 
     res.json({ address: response.data.address });
   } catch (err) {
-    res.status(500).json({ error: 'Reverse geocoding failed' });
+    res.status(500).json({ error: 'Geocoding failed' });
   }
 });
 
