@@ -27,6 +27,7 @@ const corsOptions = {
       callback(new Error(`Not allowed by CORS: ${origin}`));
     }
   },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -47,6 +48,11 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+//Cookie parser
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 
 // API Routes
 app.use('/api/auth', authRoutes);
