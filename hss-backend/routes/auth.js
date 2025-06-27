@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Helper: Map frontend fields to Mongoose schema
+// Helper: map frontend fields
 const mapRequestToUserSchema = (body) => ({
   hospitalName: body.hospital_name,
   province: body.province,
@@ -32,10 +32,9 @@ const mapRequestToUserSchema = (body) => ({
   location_address: body.location_address,
 });
 
-// Middleware: Log requests
+// Logging middleware
 router.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  console.log('Request headers:', req.headers);
   if (req.body && Object.keys(req.body).length > 0) {
     console.log('Request body keys:', Object.keys(req.body));
   }
@@ -43,7 +42,54 @@ router.use((req, res, next) => {
 });
 
 // ===============================
-// POST /api/auth/register
+// ADMIN ROUTES
+// ===============================
+
+// Get all users
+router.get('/admin/users', async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: 'Could not fetch users' });
+  }
+});
+
+// Approve user
+router.patch('/admin/users/:id/approve', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.isApproved = true;
+    await user.save();
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Your HSS account has been approved!',
+      html: `
+        <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
+          <img src="https://yourdomain.com/logo.png" alt="HSS Logo" style="height:50px;margin-bottom:20px">
+          <h2>Welcome to HSS</h2>
+          <p>Hello ${user.contactPersonName},</p>
+          <p>Your hospital account has been <strong>approved</strong> by the HSS Admin team.</p>
+          <p>You can now log in and access the HSS system.</p>
+          <p style="color:#999;font-size:12px">If you didn’t request this, please contact support.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ success: true, message: 'User approved and email sent' });
+  } catch (err) {
+    res.status(500).json({ error: 'Approval failed', details: err.message });
+  }
+});
+
+// ===============================
+// REGISTER
 // ===============================
 router.post('/register', async (req, res) => {
   try {
@@ -53,96 +99,61 @@ router.post('/register', async (req, res) => {
       phone_number, password, recaptcha_token
     } = req.body;
 
-    if (!hospital_name || !province || !city || !contact_person_name || !email || !email_id || !phone_number || !password) {
-      return res.status(400).json({ error: 'Please fill all required fields' });
-    }
-
     if (!recaptcha_token) return res.status(400).json({ error: 'Missing reCAPTCHA token' });
 
     const secretKey = process.env.RECAPTCHA_SECRET;
-    if (!secretKey) return res.status(500).json({ error: 'Missing reCAPTCHA secret key' });
-
     const { data: recaptchaRes } = await axios.post(
       `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptcha_token}`
     );
-    if (!recaptchaRes.success) {
-      return res.status(400).json({ error: 'reCAPTCHA failed', details: recaptchaRes['error-codes'] });
-    }
+    if (!recaptchaRes.success) return res.status(400).json({ error: 'reCAPTCHA failed' });
 
     const existing = await User.findOne({ emailId: email_id });
     if (existing) return res.status(400).json({ error: 'User already exists' });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userData = mapRequestToUserSchema(req.body);
-
     const newUser = new User({
-      ...userData,
+      ...mapRequestToUserSchema(req.body),
       password: hashedPassword,
       isApproved: false,
     });
 
     await newUser.save();
 
-    const token = jwt.sign(
-      { userId: newUser._id },
-      process.env.JWT_SECRET || 'verify-secret',
-      { expiresIn: '15m' }
-    );
-
     const mailOptions = {
       from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Confirm your registration with HSS',
       html: `
-        <p>Hello ${contact_person_name},</p>
-        <p>Thank you for registering your hospital on the HSS platform.</p>
-        <p>Your account will be reviewed by the HSS admin team. You'll be notified once your account is approved.</p>
-        <p>If this wasn't you, please ignore this email.</p>
+        <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
+          <img src="https://yourdomain.com/logo.png" alt="HSS Logo" style="height:50px;margin-bottom:20px">
+          <p>Hello ${contact_person_name},</p>
+          <p>Thank you for registering your hospital on the HSS platform.</p>
+          <p>Your account will be reviewed by the HSS admin team. You'll be notified once your account is approved.</p>
+          <p style="color:#999;font-size:12px">If this wasn't you, please ignore this email.</p>
+        </div>
       `,
     };
 
     await transporter.sendMail(mailOptions);
 
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful. Await admin approval.',
-    });
+    res.status(201).json({ success: true, message: 'Registration successful. Await admin approval.' });
   } catch (err) {
-    console.error('[REGISTER ERROR]', err);
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: Object.keys(err.errors).map(key => ({
-          field: key,
-          message: err.errors[key].message
-        }))
-      });
-    }
     res.status(500).json({ error: 'Registration failed', details: err.message });
   }
 });
 
 // ===============================
-// POST /api/auth/login
+// LOGIN
 // ===============================
 router.post('/login', async (req, res) => {
   try {
     const { email_id, password } = req.body;
-    if (!email_id || !password) return res.status(400).json({ error: 'Email ID and password are required' });
-
     const user = await User.findOne({ emailId: email_id });
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user || !(await bcrypt.compare(password, user.password)))
+      return res.status(401).json({ error: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
-    if (!user.isApproved) {
+    if (!user.isApproved)
       return res.status(403).json({ error: 'Account not approved by admin yet' });
-    }
-
-    user.twoFA_code = undefined;
-    user.twoFA_expires = undefined;
-    await user.save();
 
     const tempToken = jwt.sign(
       { userId: user._id, twoFAPending: true },
@@ -157,22 +168,17 @@ router.post('/login', async (req, res) => {
       message: '2FA code sent. Verify your identity.',
     });
   } catch (err) {
-    console.error('[LOGIN ERROR]', err);
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
 
 // ===============================
-// POST /api/auth/send-2fa
+// SEND 2FA
 // ===============================
 router.post('/send-2fa', async (req, res) => {
   try {
     const { email_id } = req.body;
-    if (!email_id) return res.status(400).json({ error: 'Email ID is required' });
-
     const user = await User.findOne({ emailId: email_id });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -180,58 +186,38 @@ router.post('/send-2fa', async (req, res) => {
     user.twoFA_expires = expires;
     await user.save();
 
-    const mailOptions = {
+    await transporter.sendMail({
       from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: 'Your HSS 2FA Code',
       html: `
-        <p>Hi ${user.contactPersonName || 'User'},</p>
-        <p>Your 2FA verification code is:</p>
-        <h2>${code}</h2>
-        <p>This code will expire in 10 minutes.</p>
+        <div style="font-family:Arial,sans-serif">
+          <p>Hi ${user.contactPersonName || 'User'},</p>
+          <p>Your 2FA verification code is:</p>
+          <h2>${code}</h2>
+          <p>This code will expire in 10 minutes.</p>
+        </div>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.json({ success: true, message: '2FA code sent successfully' });
   } catch (err) {
-    console.error('[SEND 2FA ERROR]', err);
     res.status(500).json({ error: 'Failed to send 2FA code', details: err.message });
   }
 });
 
 // ===============================
-// POST /api/auth/verify-2fa
+// VERIFY 2FA
 // ===============================
 router.post('/verify-2fa', async (req, res) => {
   try {
     const { email_id, code, tempToken } = req.body;
-    if (!email_id || !code || !tempToken) {
-      return res.status(400).json({ error: 'Email ID, code, and token are required' });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'secret');
-      if (!decoded.twoFAPending) {
-        return res.status(401).json({ error: 'Invalid 2FA token' });
-      }
-    } catch {
-      return res.status(401).json({ error: 'Invalid or expired token' });
-    }
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'secret');
+    if (!decoded.twoFAPending) return res.status(401).json({ error: 'Invalid 2FA token' });
 
     const user = await User.findOne({ emailId: email_id });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    if (!user.twoFA_code || !user.twoFA_expires)
-      return res.status(400).json({ error: 'No 2FA code set. Request a new one.' });
-
-    if (new Date() > user.twoFA_expires)
-      return res.status(400).json({ error: '2FA code expired' });
-
-    if (user.twoFA_code !== code)
-      return res.status(400).json({ error: 'Invalid 2FA code' });
+    if (!user || user.twoFA_code !== code || new Date() > user.twoFA_expires)
+      return res.status(400).json({ error: 'Invalid or expired 2FA code' });
 
     user.twoFA_code = undefined;
     user.twoFA_expires = undefined;
@@ -245,31 +231,25 @@ router.post('/verify-2fa', async (req, res) => {
 
     res.json({ success: true, token, message: '2FA verified successfully' });
   } catch (err) {
-    console.error('[VERIFY 2FA ERROR]', err);
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
 });
 
 // ===============================
-// POST /api/geocode
+// GEOCODE
 // ===============================
 router.post('/geocode', async (req, res) => {
   const { lat, lon } = req.body;
-  if (!lat || !lon) {
-    return res.status(400).json({ error: 'Missing latitude or longitude' });
-  }
+  if (!lat || !lon) return res.status(400).json({ error: 'Missing latitude or longitude' });
 
   try {
     const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
       params: { format: 'json', lat, lon },
-      headers: {
-        'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' // Replace with your contact email
-      }
+      headers: { 'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' }
     });
 
     res.json({ address: response.data.address });
   } catch (err) {
-    console.error('[GEOCODE ERROR]', err.message);
     res.status(500).json({ error: 'Reverse geocoding failed' });
   }
 });
