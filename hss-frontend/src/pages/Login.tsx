@@ -53,7 +53,6 @@ const Login = () => {
     const storedLockout = localStorage.getItem(LOCKOUT_KEY);
 
     if (storedAttempts) setLoginAttempts(parseInt(storedAttempts, 10));
-
     if (storedLockout) {
       const lockoutDate = new Date(storedLockout);
       if (lockoutDate > new Date()) {
@@ -80,7 +79,6 @@ const Login = () => {
 
   useEffect(() => {
     if (!lockoutTime) return;
-
     timerRef.current = setInterval(() => {
       if (new Date() >= lockoutTime) {
         setLockoutTime(null);
@@ -91,7 +89,6 @@ const Login = () => {
         if (timerRef.current) clearInterval(timerRef.current);
       }
     }, 1000);
-
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -132,6 +129,13 @@ const Login = () => {
       return;
     }
 
+    // ✅ SUPER ADMIN HARDCODED LOGIN
+    if (data.email === "admin@hss.com" && data.password === "Admin1234") {
+      toast({ title: "Super Admin Login", description: "Welcome, Admin!" });
+      navigate("/Admin");
+      return;
+    }
+
     try {
       const payload = {
         email_id: data.email,
@@ -152,7 +156,6 @@ const Login = () => {
         setRecaptchaToken(null);
 
         const attemptsLeft = loginAttempts - 1;
-
         if (attemptsLeft <= 0) {
           const timeoutDuration = 30 * 1000;
           setLockoutTime(new Date(Date.now() + timeoutDuration));
@@ -259,12 +262,7 @@ const Login = () => {
             )}
           />
 
-          {/* CAPTCHA with blur effect on lockout */}
-          <div
-            className={`flex justify-center transition-all duration-300 ${
-              lockoutTime ? "blur-sm pointer-events-none opacity-50" : ""
-            }`}
-          >
+          <div className={`flex justify-center ${lockoutTime ? "blur-sm pointer-events-none opacity-50" : ""}`}>
             <ReCAPTCHA
               ref={recaptchaRef}
               sitekey={RECAPTCHA_SITE_KEY}
@@ -276,9 +274,7 @@ const Login = () => {
             />
           </div>
 
-          {errorMessage && (
-            <div className="text-red-600 text-center text-sm font-medium">{errorMessage}</div>
-          )}
+          {errorMessage && <div className="text-red-600 text-center text-sm font-medium">{errorMessage}</div>}
 
           {lockoutTime && (
             <div className="text-red-600 text-center text-sm font-medium">

@@ -572,7 +572,7 @@ const Register = () => {
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
-              sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+              sitekey="6Lc-nlQrAAAAAEVa2AKpoXPkQ7I5iHeVmsE1FHDb"
               onChange={setRecaptchaToken}
             />
           </div>
