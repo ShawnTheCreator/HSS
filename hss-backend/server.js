@@ -3,18 +3,19 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
+const geocodeRoutes = require('./routes/geocode'); // Import geocode routes
 
 // Initialize environment variables
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Enhanced CORS configuration
 const allowedOrigins = [
   'https://healthcaresecuresystem.netlify.app',
-  "http://localhost:8080"
+  'http://localhost:8080',
 ];
 
 const corsOptions = {
@@ -29,9 +30,8 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
 };
-
 
 app.use(cors(corsOptions));
 
@@ -48,16 +48,16 @@ app.use((req, res, next) => {
   next();
 });
 
-
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api', geocodeRoutes); // Mount geocode routes
 
 // Health check endpoints
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'UP',
     timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED'
+    database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED',
   });
 });
 
@@ -93,33 +93,34 @@ app.use((error, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.path}`, {
     error: error.message,
     stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-    body: req.body
+    body: req.body,
   });
 
   const statusCode = error.statusCode || 500;
   const message = statusCode === 500 ? 'Internal server error' : error.message;
-  
+
   res.status(statusCode).json({
     success: false,
     message,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
   });
 });
 
 // Database connection with retry logic
 const connectWithRetry = () => {
-  mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000
-  })
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err.message);
-    console.log('Retrying connection in 5 seconds...');
-    setTimeout(connectWithRetry, 5000);
-  });
+  mongoose
+    .connect(MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+    .then(() => console.log('✅ MongoDB connected successfully'))
+    .catch((err) => {
+      console.error('❌ MongoDB connection error:', err.message);
+      console.log('Retrying connection in 5 seconds...');
+      setTimeout(connectWithRetry, 5000);
+    });
 };
 
 // Start server only after database connection
