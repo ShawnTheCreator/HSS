@@ -250,4 +250,28 @@ router.post('/verify-2fa', async (req, res) => {
   }
 });
 
+// ===============================
+// POST /api/geocode
+// ===============================
+router.post('/geocode', async (req, res) => {
+  const { lat, lon } = req.body;
+  if (!lat || !lon) {
+    return res.status(400).json({ error: 'Missing latitude or longitude' });
+  }
+
+  try {
+    const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+      params: { format: 'json', lat, lon },
+      headers: {
+        'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' // Replace with your contact email
+      }
+    });
+
+    res.json({ address: response.data.address });
+  } catch (err) {
+    console.error('[GEOCODE ERROR]', err.message);
+    res.status(500).json({ error: 'Reverse geocoding failed' });
+  }
+});
+
 module.exports = router;

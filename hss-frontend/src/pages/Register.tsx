@@ -79,9 +79,11 @@ const getAddressFromCoordinates = async (
   lon: number
 ): Promise<string> => {
   try {
-    const response = await axios.get(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
-    );
+    const response = await axios.post("https://hss-backend.onrender.com/api/geocode", {
+      lat,
+      lon,
+    });
+
     const { address } = response.data;
     return `${address.city || address.town || address.village || ""}, ${
       address.state || ""
@@ -91,6 +93,7 @@ const getAddressFromCoordinates = async (
     return "Unknown Location";
   }
 };
+
 
 const formSchema = z
   .object({
