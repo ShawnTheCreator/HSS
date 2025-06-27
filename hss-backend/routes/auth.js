@@ -88,6 +88,52 @@ router.patch('/admin/users/:id/approve', async (req, res) => {
   }
 });
 
+// Reject user
+router.patch('/admin/users/:id/reject', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await User.findByIdAndDelete(req.params.id);
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Your HSS account was not approved',
+      html: `
+        <div style="font-family:Arial,sans-serif;border:1px solid #f5c6cb;padding:20px;border-radius:10px;background-color:#f8d7da">
+          <h2 style="color:#721c24">HSS Registration Update</h2>
+          <p>Hello ${user.contactPersonName},</p>
+          <p>Unfortunately, your hospital registration on the HSS platform was <strong>not approved</strong>.</p>
+          <p>If you believe this was a mistake or need further clarification, please contact our support team.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ success: true, message: 'User rejected and email sent' });
+  } catch (err) {
+    res.status(500).json({ error: 'Rejection failed', details: err.message });
+  }
+});
+
+// Revoke approval
+router.patch('/admin/users/:id/unapprove', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    user.isApproved = false;
+    await user.save();
+
+    res.json({ success: true, message: 'User approval revoked' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to revoke approval', details: err.message });
+  }
+});
+
+
 // ===============================
 // REGISTER
 // ===============================
