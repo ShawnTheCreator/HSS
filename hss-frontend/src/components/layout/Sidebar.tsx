@@ -124,7 +124,7 @@ const Sidebar = () => {
   )}
   onClick={async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+      const res = await fetch(`https://hss-backend.onrender.com/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });

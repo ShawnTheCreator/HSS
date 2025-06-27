@@ -15,6 +15,9 @@ import LandingPage from "./pages/LandingPage";
 import GetStarted from "./pages/GetStarted";
 import ContactForm from "./pages/Contact";
 import Admin from "./pages/AdminDashboard";
+import Notifications from "./pages/Notifications";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings"
 
 const queryClient = new QueryClient();
 
@@ -37,9 +40,9 @@ const App = () => (
           <Route path="/staff" element={<Staff />} />
           <Route path="/admin" element={<Admin />} />
           {/* Additional routes to be implemented */}
-          {/* <Route path="/notifications" element={<Notifications />} /> */}
-          {/* <Route path="/settings" element={<Settings />} /> */}
-          {/* <Route path="/reports" element={<Reports />} /> */}
+          <Route path="/notifications" element={<Notifications />} /> 
+          <Route path="/settings" element={<Settings />} /> 
+          <Route path="/reports" element={<Reports />} /> 
           {/* <Route path="/about" element={<About />} /> */}
           {/* <Route path="/contact" element={<Contact />} /> */}
           <Route path="*" element={<NotFound />} />
