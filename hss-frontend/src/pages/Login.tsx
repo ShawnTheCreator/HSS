@@ -28,7 +28,6 @@ type FormValues = z.infer<typeof formSchema>;
 const ATTEMPTS_KEY = "loginAttempts";
 const LOCKOUT_KEY = "loginLockoutTime";
 
-// Replace with your actual reCAPTCHA v2 site key
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const Login = () => {
@@ -49,7 +48,6 @@ const Login = () => {
     },
   });
 
-  // On component mount, load attempts and lockout time from localStorage
   useEffect(() => {
     const storedAttempts = localStorage.getItem(ATTEMPTS_KEY);
     const storedLockout = localStorage.getItem(LOCKOUT_KEY);
@@ -63,14 +61,12 @@ const Login = () => {
       if (lockoutDate > new Date()) {
         setLockoutTime(lockoutDate);
       } else {
-        // Expired lockout time - clear storage
         localStorage.removeItem(LOCKOUT_KEY);
         localStorage.removeItem(ATTEMPTS_KEY);
       }
     }
   }, []);
 
-  // Save attempts and lockoutTime to localStorage when they change
   useEffect(() => {
     localStorage.setItem(ATTEMPTS_KEY, loginAttempts.toString());
   }, [loginAttempts]);
@@ -84,7 +80,6 @@ const Login = () => {
     }
   }, [lockoutTime]);
 
-  // Countdown timer effect for lockout
   useEffect(() => {
     if (!lockoutTime) return;
 
@@ -93,7 +88,6 @@ const Login = () => {
         setLockoutTime(null);
         setLoginAttempts(3);
         setErrorMessage("");
-        // Reset reCAPTCHA when lockout expires
         if (recaptchaRef.current) {
           recaptchaRef.current.reset();
         }
@@ -107,12 +101,10 @@ const Login = () => {
     };
   }, [lockoutTime]);
 
-  // Handle reCAPTCHA change (v2)
   const handleRecaptchaChange = (token: string | null) => {
     setRecaptchaToken(token);
   };
 
-  // Handle reCAPTCHA expiration
   const handleRecaptchaExpired = () => {
     setRecaptchaToken(null);
     toast({
@@ -122,7 +114,6 @@ const Login = () => {
     });
   };
 
-  // Handle reCAPTCHA error
   const handleRecaptchaError = () => {
     setRecaptchaToken(null);
     toast({
@@ -138,7 +129,6 @@ const Login = () => {
       return;
     }
 
-    // Check if reCAPTCHA is completed
     if (!recaptchaToken) {
       toast({
         title: "reCAPTCHA Required",
@@ -149,21 +139,25 @@ const Login = () => {
     }
 
     try {
+      const payload = {
+        email_id: data.email, // 🔥 Fix: map correctly to backend requirement
+        password: data.password,
+        recaptcha_token: recaptchaToken,
+      };
+
+      console.log("Submitting login payload:", payload);
+
       const response = await fetch("https://hss-backend.onrender.com/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...data,
-          recaptcha_token: recaptchaToken,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        // Reset reCAPTCHA on failed login attempt
         if (recaptchaRef.current) {
           recaptchaRef.current.reset();
         }
@@ -172,7 +166,7 @@ const Login = () => {
         const attemptsLeft = loginAttempts - 1;
 
         if (attemptsLeft <= 0) {
-          const timeoutDuration = 30 * 1000; // 30 seconds
+          const timeoutDuration = 30 * 1000;
           setLockoutTime(new Date(Date.now() + timeoutDuration));
           setErrorMessage("Too many failed login attempts. Please wait 30 seconds before retrying.");
         } else {
@@ -182,12 +176,10 @@ const Login = () => {
         throw new Error(result.message || "Login failed");
       }
 
-      // Successful login: reset attempts and error
       setLoginAttempts(3);
       setErrorMessage("");
       setRecaptchaToken(null);
 
-      // Save token if backend sends one
       if (result.token) {
         localStorage.setItem("token", result.token);
       }
@@ -199,7 +191,7 @@ const Login = () => {
 
       navigate("/dashboard");
     } catch (error: any) {
-      console.error(error);
+      console.error("Login error:", error.message || error);
     }
   };
 
@@ -281,7 +273,6 @@ const Login = () => {
             )}
           />
 
-          {/* reCAPTCHA v2 Component */}
           <div className="flex justify-center">
             <ReCAPTCHA
               ref={recaptchaRef}
@@ -289,8 +280,8 @@ const Login = () => {
               onChange={handleRecaptchaChange}
               onExpired={handleRecaptchaExpired}
               onError={handleRecaptchaError}
-              theme="light" // or "dark"
-              size="normal" // or "compact"
+              theme="light"
+              size="normal"
             />
           </div>
 
