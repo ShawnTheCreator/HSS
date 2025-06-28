@@ -14,7 +14,7 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Enhanced CORS configuration
 const allowedOrigins = [
-  'https://www.healthcaresecuresystems.co.za/',
+  'https://www.healthcaresecuresystems.co.za',
   'http://localhost:8080',
 ];
 
