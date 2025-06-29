@@ -237,10 +237,21 @@ router.post('/login', async (req, res) => {
 // ===============================
 // SEND 2FA
 // ===============================
+const { Resend } = require('resend');
+const resend = new Resend(process.env.VITE_RESEND_API_KEY);
+
 router.post('/send-2fa', async (req, res) => {
   try {
     const { email_id } = req.body;
+
+    if (!email_id) {
+      return res.status(400).json({ error: 'Missing email_id' });
+    }
+
     const user = await User.findOne({ emailId: email_id });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000);
@@ -249,18 +260,28 @@ router.post('/send-2fa', async (req, res) => {
     user.twoFA_expires = expires;
     await user.save();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+      from: process.env.EMAIL_USER, // ← no-reply@yourdomain.com
       to: user.email,
       subject: 'Your HSS 2FA Code',
-      html: `<p>Your verification code is: <strong>${code}</strong></p>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;">
+          <h2>HSS Login Code</h2>
+          <p>Hello ${user.contactPersonName || 'User'},</p>
+          <p>Your verification code is:</p>
+          <h1 style="color: #6A0DAD">${code}</h1>
+          <p>This code is valid for 10 minutes.</p>
+        </div>
+      `,
     });
 
-    res.json({ success: true, message: '2FA code sent' });
+    res.json({ success: true, message: '2FA code sent via Resend' });
   } catch (err) {
+    console.error('Error sending 2FA:', err.message);
     res.status(500).json({ error: 'Failed to send 2FA code', details: err.message });
   }
 });
+
 
 // ===============================
 // VERIFY 2FA
@@ -289,13 +310,14 @@ router.post('/verify-2fa', async (req, res) => {
     );
 
     res
-      .cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-        maxAge: 60 * 60 * 1000,
-      })
-      .json({ success: true, message: '2FA verified successfully' });
+  .cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // true in prod, false locally
+    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for dev
+    maxAge: 60 * 60 * 1000,
+  })
+  .json({ success: true, message: '2FA verified successfully' });
+
   } catch (err) {
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
@@ -323,11 +345,11 @@ router.post('/geocode', async (req, res) => {
 // Logout
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production' ? true : false,
-    sameSite: 'Strict',
-  });
-  res.json({ success: true, message: 'Logged out successfully' });
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production' ? true : false,
+  sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+});
+res.json({ success: true, message: 'Logged out successfully' });
 });
 
 module.exports = router;
