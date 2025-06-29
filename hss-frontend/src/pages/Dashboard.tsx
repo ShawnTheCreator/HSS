@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MainLayout from "@/components/layout/MainLayout";
 import {
   Card,
@@ -53,39 +54,77 @@ const Dashboard = () => {
   });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const getAuthToken = () => {
+    const token = document.cookie.split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1];
+    return token;
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
+        setLoading(true);
+        const token = getAuthToken();
+        
+        if (!token) {
+          navigate('/login');
+          return;
+        }
+
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
         const [statsRes, alertsRes, shiftsRes] = await Promise.all([
           fetch("https://hss-backend.onrender.com/api/dashboard/stats", {
-            credentials: "include",
+            headers,
+            credentials: "include"
           }),
           fetch("https://hss-backend.onrender.com/api/dashboard/alerts", {
-            credentials: "include",
+            headers,
+            credentials: "include"
           }),
           fetch("https://hss-backend.onrender.com/api/dashboard/shifts", {
-            credentials: "include",
-          }),
+            headers,
+            credentials: "include"
+          })
         ]);
-        if (!statsRes.ok || !alertsRes.ok || !shiftsRes.ok)
-          throw new Error("Failed to fetch");
+
+        if (statsRes.status === 401 || alertsRes.status === 401 || shiftsRes.status === 401) {
+          navigate('/login');
+          return;
+        }
+
+        if (!statsRes.ok || !alertsRes.ok || !shiftsRes.ok) {
+          throw new Error(`HTTP error! status: ${statsRes.status}`);
+        }
 
         const [statsData, alertsData, shiftsData] = await Promise.all([
           statsRes.json(),
           alertsRes.json(),
-          shiftsRes.json(),
+          shiftsRes.json()
         ]);
 
         setStats(statsData);
         setAlerts(alertsData);
         setShifts(shiftsData);
+        setError(null);
       } catch (err) {
         console.error("Fetch error:", err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchDashboard();
-  }, []);
+  }, [navigate]);
 
   const complianceRate = (() => {
     const { valid, invalid } = stats.compliance;
@@ -100,6 +139,32 @@ const Dashboard = () => {
       return <AlertTriangle className="h-4 w-4 text-amber-500" />;
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
+
+  if (loading) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-hss-purple-vivid"></div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <MainLayout>
+        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <p>Error: {error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-2 px-4 py-2 bg-hss-purple-vivid text-white rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -116,9 +181,7 @@ const Dashboard = () => {
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
           </TabsList>
 
-          {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Stats */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader>
@@ -164,7 +227,6 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            {/* Recent Alerts */}
             <div className="grid gap-6 md:grid-cols-7">
               <Card className="col-span-7 md:col-span-4">
                 <CardHeader>
@@ -198,7 +260,6 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* Upcoming Shifts */}
               <Card className="col-span-7 md:col-span-3">
                 <CardHeader>
                   <CardTitle>Upcoming Shifts</CardTitle>
@@ -237,12 +298,10 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          {/* Analytics */}
           <TabsContent value="analytics">
             <p className="text-muted-foreground">Analytics content placeholder</p>
           </TabsContent>
 
-          {/* Alerts */}
           <TabsContent value="alerts">
             <p className="text-muted-foreground">All alerts placeholder</p>
           </TabsContent>
