@@ -324,7 +324,7 @@ router.post('/geocode', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production' ? true : false,
     sameSite: 'Strict',
   });
   res.json({ success: true, message: 'Logged out successfully' });
