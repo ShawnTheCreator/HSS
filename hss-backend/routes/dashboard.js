@@ -9,19 +9,28 @@ const Compliance = require('../models/Compliance');
 // Authentication middleware
 const authMiddleware = (req, res, next) => {
   try {
+    // Try getting token from Authorization header
+    let token = null;
     const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ message: 'Authorization header missing' });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
 
-    const token = authHeader.split(' ')[1];
+    // Or fallback to cookie
+    if (!token && req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
     if (!token) return res.status(401).json({ message: 'Token missing' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // Should contain user info, including hospitalId
+    req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
+
 
 // Protect all routes under /api/dashboard
 router.use(authMiddleware);
