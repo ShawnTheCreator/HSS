@@ -34,10 +34,18 @@ const mapRequestToUserSchema = (body) => ({
 });
 
 // ===============================
-// AUTHENTICATION MIDDLEWARE
+// AUTHENTICATION MIDDLEWARE - IMPROVED
 // ===============================
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.token;
+  let token = req.cookies.token;
+  
+  // Fallback to Authorization header for cross-origin requests
+  if (!token && req.headers.authorization) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
+  }
   
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -335,7 +343,7 @@ router.get('/staff', authenticateToken, async (req, res) => {
 });
 
 // ===============================
-// AUTHENTICATION ROUTES
+// AUTHENTICATION ROUTES - IMPROVED
 // ===============================
 
 // Register
@@ -396,7 +404,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// Login - IMPROVED WITH CROSS-ORIGIN SUPPORT
 router.post('/login', async (req, res) => {
   try {
     const { email_id, password } = req.body;
@@ -433,21 +441,24 @@ router.post('/login', async (req, res) => {
       { expiresIn: '24h' } // Extended to 24 hours
     );
 
-    // Set secure cookie
+    // Set secure cookie with cross-origin settings
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+      secure: true, // Always true for production (Render.com requires HTTPS)
+      sameSite: 'none', // Required for cross-origin cookies
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
     });
 
     res.json({ 
       success: true, 
       message: 'Login successful',
+      token, // Also send token in response for frontend fallback
       user: {
         hospitalName: user.hospitalName,
         contactPersonName: user.contactPersonName,
-        email: user.email
+        email: user.email,
+        role: user.role || 'user'
       }
     });
   } catch (err) {
@@ -456,17 +467,18 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Logout
+// Logout - IMPROVED
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+    secure: true,
+    sameSite: 'none',
+    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
   });
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// Check authentication status
+// Check authentication status - IMPROVED
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
@@ -488,6 +500,50 @@ router.get('/me', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Auth check error:', err);
     res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+// ===============================
+// TOKEN REFRESH ROUTE (NEW)
+// ===============================
+router.post('/refresh-token', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user || !user.isApproved) {
+      return res.status(401).json({ error: 'User not found or not approved' });
+    }
+
+    // Generate new token
+    const newToken = jwt.sign(
+      {
+        userId: user._id,
+        hospitalId: user._id,
+        hospitalName: user.hospitalName,
+        role: user.role || 'user',
+        email: user.email,
+        contactPersonName: user.contactPersonName
+      },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '24h' }
+    );
+
+    // Set new cookie
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 24 * 60 * 60 * 1000,
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Token refreshed successfully',
+      token: newToken 
+    });
+  } catch (err) {
+    console.error('Token refresh error:', err);
+    res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
 
@@ -567,9 +623,10 @@ router.post('/verify-2fa', async (req, res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 24 * 60 * 60 * 1000,
+      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
     }).json({ success: true, message: '2FA verified successfully' });
 
   } catch (err) {

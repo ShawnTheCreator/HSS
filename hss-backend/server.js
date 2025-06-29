@@ -2,8 +2,10 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
-const geocodeRoutes = require('./routes/geocode'); // Import geocode routes
+const geocodeRoutes = require('./routes/geocode');
+const dashboardRoutes = require('./routes/dashboard');
 
 // Initialize environment variables
 dotenv.config();
@@ -12,15 +14,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Enhanced CORS configuration
+// Define allowed origins (merged your lists, add or remove as needed)
 const allowedOrigins = [
-  'https://www.healthcaresecuresystems.co.za',
   'http://localhost:8080',
+  'https://www.healthcaresecuresystems.co.za',
 ];
 
+// CORS options
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (like mobile apps or curl) or in allowed list
       callback(null, true);
     } else {
       console.warn(`Blocked by CORS: ${origin}`);
@@ -28,19 +32,22 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+  exposedHeaders: ['set-cookie'],           // Your custom exposed headers
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
 
-// Enhanced body parsing middleware
+// Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Enhanced request logging middleware
+// Cookie parser
+app.use(cookieParser());
+
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -49,18 +56,12 @@ app.use((req, res, next) => {
   next();
 });
 
-//Cookie parser
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
-
-const dashboardRoutes = require('./routes/dashboard');
+// Routes
 app.use('/api/dashboard', dashboardRoutes);
-
-// API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api', geocodeRoutes); // Mount geocode routes
+app.use('/api', geocodeRoutes);
 
-// Health check endpoints
+// Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'UP',
@@ -69,6 +70,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Root page
 app.get('/', (req, res) => {
   res.send(`
     <html>
@@ -96,7 +98,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Enhanced error handling middleware
+// Error handling middleware
 app.use((error, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.path}`, {
     error: error.message,
@@ -114,7 +116,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Database connection with retry logic
+// DB connection with retry logic
 const connectWithRetry = () => {
   mongoose
     .connect(MONGO_URI, {
@@ -131,7 +133,7 @@ const connectWithRetry = () => {
     });
 };
 
-// Start server only after database connection
+// Start server after DB connects
 const startServer = () => {
   if (mongoose.connection.readyState === 1) {
     app.listen(PORT, () => {
@@ -144,7 +146,6 @@ const startServer = () => {
   }
 };
 
-// Initial connection
 connectWithRetry();
 startServer();
 
