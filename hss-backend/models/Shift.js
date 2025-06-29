@@ -2,9 +2,15 @@ const mongoose = require('mongoose');
 
 const shiftSchema = new mongoose.Schema(
   {
+    hospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hospital',  // Reference to your Hospital model
+      required: true,
+    },
     department: {
       type: String,
       required: [true, 'Department is required'],
+      trim: true,
     },
     staff: {
       type: mongoose.Schema.Types.ObjectId,
@@ -18,10 +24,12 @@ const shiftSchema = new mongoose.Schema(
     startTime: {
       type: String,
       required: [true, 'Start time is required'],
+      trim: true,
     },
     endTime: {
       type: String,
       required: [true, 'End time is required'],
+      trim: true,
     },
     shiftType: {
       type: String,

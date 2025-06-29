@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const staffSchema = new mongoose.Schema(
   {
-    hospital: {
+    hospitalId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User', // Refers to the hospital admin that owns this staff
+      ref: 'Hospital', // Reference to the Hospital model
       required: true,
     },
     firstName: {

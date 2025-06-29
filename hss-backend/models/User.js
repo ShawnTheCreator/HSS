@@ -2,36 +2,14 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
-    hospitalName: {
-      type: String,
-      required: [true, 'Hospital name is required'],
-      trim: true,
-      minlength: 2,
+    hospitalId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Hospital',  // Reference to Hospital model
+      required: true,
     },
-    province: {
+    name: {
       type: String,
-      required: [true, 'Province is required'],
-      enum: [
-        "Eastern Cape",
-        "Free State",
-        "Gauteng",
-        "KwaZulu-Natal",
-        "Limpopo",
-        "Mpumalanga",
-        "Northern Cape",
-        "North West",
-        "Western Cape",
-      ],
-    },
-    city: {
-      type: String,
-      required: [true, 'City is required'],
-      trim: true,
-      minlength: 2,
-    },
-    contactPersonName: {
-      type: String,
-      required: [true, 'Contact person name is required'],
+      required: [true, 'Name is required'],
       trim: true,
       minlength: 2,
     },
@@ -87,7 +65,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['admin', 'user'],
+      enum: ['admin', 'user', 'doctor', 'nurse', 'staff'], // extend roles as needed
       default: 'user',
     }
   },

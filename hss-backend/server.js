@@ -53,6 +53,8 @@ app.use((req, res, next) => {
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
+const dashboardRoutes = require('./routes/dashboard');
+app.use('/api/dashboard', dashboardRoutes);
 
 // API Routes
 app.use('/api/auth', authRoutes);

@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const User = require('../models/User');
+const Staff = require('../models/Staff');
 require('dotenv').config();
 
 const router = express.Router();
@@ -133,6 +134,27 @@ router.patch('/admin/users/:id/unapprove', async (req, res) => {
 });
 
 // ===============================
+// STAFF ROUTE
+// ===============================
+
+// Get staff members by hospitalId
+router.get('/staff', async (req, res) => {
+  try {
+    const { hospitalId } = req.query;
+    if (!hospitalId) {
+      return res.status(400).json({ error: 'hospitalId query parameter is required' });
+    }
+
+    const staff = await Staff.find({ hospitalId }).lean();
+
+    res.json({ success: true, staff });
+  } catch (err) {
+    console.error('Error fetching staff:', err);
+    res.status(500).json({ error: 'Could not fetch staff' });
+  }
+});
+
+// ===============================
 // REGISTER
 // ===============================
 router.post('/register', async (req, res) => {
@@ -196,7 +218,12 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Account not approved yet' });
 
     const tempToken = jwt.sign(
-      { userId: user._id, twoFAPending: true },
+      {
+        userId: user._id,
+        hospitalId: user.hospitalId,
+        role: user.role,
+        twoFAPending: true,
+      },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '10m' }
     );
@@ -252,20 +279,23 @@ router.post('/verify-2fa', async (req, res) => {
     await user.save();
 
     const token = jwt.sign(
-      { userId: user._id, role: user.role },
+      {
+        userId: user._id,
+        hospitalId: user.hospitalId,
+        role: user.role,
+      },
       process.env.JWT_SECRET || 'secret',
       { expiresIn: '1h' }
     );
 
-   res
-  .cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-    maxAge: 60 * 60 * 1000, // 1 hour
-  })
-  .json({ success: true, message: '2FA verified successfully' });
-
+    res
+      .cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 60 * 60 * 1000,
+      })
+      .json({ success: true, message: '2FA verified successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
@@ -281,7 +311,7 @@ router.post('/geocode', async (req, res) => {
   try {
     const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
       params: { format: 'json', lat, lon },
-      headers: { 'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' }
+      headers: { 'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' },
     });
 
     res.json({ address: response.data.address });
@@ -290,15 +320,14 @@ router.post('/geocode', async (req, res) => {
   }
 });
 
-//logout
+// Logout
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict', // or 'Lax' based on your frontend setup
+    sameSite: 'Strict',
   });
   res.json({ success: true, message: 'Logged out successfully' });
 });
-
 
 module.exports = router;
