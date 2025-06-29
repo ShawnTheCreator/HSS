@@ -217,27 +217,33 @@ router.post('/login', async (req, res) => {
     if (!user.isApproved)
       return res.status(403).json({ error: 'Account not approved yet' });
 
-    const tempToken = jwt.sign(
+    // BYPASS 2FA TEMPORARILY
+    const token = jwt.sign(
       {
         userId: user._id,
         hospitalId: user.hospitalId,
         role: user.role,
-        twoFAPending: true,
       },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: '10m' }
+      { expiresIn: '1h' }
     );
 
-    res.json({ success: true, twoFARequired: true, tempToken });
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+      maxAge: 60 * 60 * 1000,
+    }).json({ success: true, message: 'Login successful (2FA bypassed)' });
   } catch (err) {
     res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
 
+
 // ===============================
 // SEND 2FA
 // ===============================
-const { Resend } = require('resend');
+/*const { Resend } = require('resend');
 const resend = new Resend(process.env.VITE_RESEND_API_KEY);
 
 router.post('/send-2fa', async (req, res) => {
@@ -321,7 +327,7 @@ router.post('/verify-2fa', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Verification failed', details: err.message });
   }
-});
+});*/
 
 // ===============================
 // GEOCODE
