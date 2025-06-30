@@ -3,13 +3,14 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
-const User = require('../models/User');
-const Staff = require('../models/Staff');
+const CentralAuth = require('../models/CentralAuth');
+const staffSchema = require('../models/Staff');
+const { getTenantModel } = require('../utils/multiTenantDb');
 require('dotenv').config();
 
 const router = express.Router();
 
-// Email transporter - FIXED: Changed createTransporter to createTransport
+// Email transporter setup
 const transporter = nodemailer.createTransport({
   service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
@@ -18,9 +19,15 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Helper: map frontend fields
-const mapRequestToUserSchema = (body) => ({
+// Map frontend request body to central auth schema fields
+const mapRequestToCentralAuthSchema = (body) => ({
   hospitalName: body.hospital_name,
+  hospitalDbName:
+    body.hospital_name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '') + '_hospital',
   province: body.province,
   city: body.city,
   contactPersonName: body.contact_person_name,
@@ -33,20 +40,17 @@ const mapRequestToUserSchema = (body) => ({
   location_address: body.location_address,
 });
 
-// ===============================
-// AUTHENTICATION MIDDLEWARE - IMPROVED
-// ===============================
+// Middleware to authenticate JWT token and set req.user
 const authenticateToken = (req, res, next) => {
   let token = req.cookies.token;
-  
-  // Fallback to Authorization header for cross-origin requests
+
   if (!token && req.headers.authorization) {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     }
   }
-  
+
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
@@ -54,160 +58,268 @@ const authenticateToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
     req.user = decoded;
+    if (!req.user.hospitalDbName) {
+      return res.status(401).json({ error: 'Invalid token: missing hospital context' });
+    }
     next();
   } catch (err) {
     console.error('Token verification error:', err);
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
-// ===============================
-// DASHBOARD ROUTES
-// ===============================
-
-// Dashboard stats
-router.get('/dashboard/stats', authenticateToken, async (req, res) => {
+// ====================
+// REGISTRATION ROUTE
+// ====================
+router.post('/register', async (req, res) => {
   try {
-    const { hospitalId } = req.user;
-    
-    // Get total staff count
-    const totalStaff = await Staff.countDocuments({ hospitalId });
-    
-    // Get active shifts (assuming all staff with active status)
-    const activeShifts = await Staff.countDocuments({ 
-      hospitalId,
-      status: { $in: ['active', 'on-shift'] } // Adjust based on your Staff schema
+    const {
+      hospital_name,
+      province,
+      city,
+      contact_person_name,
+      email,
+      email_id,
+      phone_number,
+      password,
+      recaptcha_token,
+      device_fingerprint,
+      gps_coordinates,
+      location_address,
+    } = req.body;
+
+    if (!recaptcha_token) return res.status(400).json({ error: 'Missing reCAPTCHA token' });
+
+    // Verify reCAPTCHA
+    const secretKey = process.env.RECAPTCHA_SECRET;
+    const { data: recaptchaRes } = await axios.post(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptcha_token}`
+    );
+
+    if (!recaptchaRes.success) return res.status(400).json({ error: 'reCAPTCHA verification failed' });
+
+    // Check if hospital already exists by email or emailId
+    const existing = await CentralAuth.findOne({
+      $or: [{ emailId: email_id }, { email }],
     });
-    
-    // Get compliance data (you can customize this logic)
-    const allStaff = await Staff.find({ hospitalId });
-    const validCompliance = allStaff.filter(staff => {
-      // Add your compliance logic here, e.g., valid certifications
-      return staff.certificationExpiry && new Date(staff.certificationExpiry) > new Date();
-    }).length;
-    
-    const compliance = {
-      valid: validCompliance,
-      invalid: totalStaff - validCompliance
+
+    if (existing) {
+      return res.status(400).json({ error: 'Hospital already registered with this Email ID or email' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const newHospital = new CentralAuth({
+      ...mapRequestToCentralAuthSchema(req.body),
+      password: hashedPassword,
+      isApproved: false,
+      createdAt: new Date(),
+      device_fingerprint,
+      gps_coordinates,
+      location_address,
+    });
+
+    await newHospital.save();
+
+    // Send registration confirmation email
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Confirm your registration with HSS',
+      html: `
+        <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
+          <h2 style="color:#6A0DAD">Welcome to HSS</h2>
+          <p>Hello ${contact_person_name},</p>
+          <p>Thank you for registering <strong>${hospital_name}</strong> with our Healthcare Staff Scheduling system.</p>
+          <p>Your registration is currently under review. You'll receive a notification email once your account has been approved.</p>
+          <p>This process typically takes 1-2 business days.</p>
+          <hr style="margin:20px 0">
+          <p style="font-size:12px;color:#666">This is an automated message from the HSS System.</p>
+        </div>
+      `,
     };
-    
-    // Get pending approvals (staff awaiting approval)
-    const pendingApprovals = await Staff.countDocuments({ 
-      hospitalId,
-      status: 'pending' 
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(201).json({ success: true, message: 'Registration successful. Please wait for admin approval.' });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ error: 'Registration failed', details: err.message });
+  }
+});
+
+// ====================
+// LOGIN ROUTE
+// ====================
+router.post('/login', async (req, res) => {
+  try {
+    const { email_id, password } = req.body;
+
+    console.log('Login attempt:', { email_id, password });
+
+    if (!email_id || !password) {
+      console.log('Missing email_id or password');
+      return res.status(400).json({ error: 'Email ID and password are required' });
+    }
+
+    // Use the provided regex to find the user
+    const user = await CentralAuth.findOne({ emailId: new RegExp(`^${email_id}$`, 'i') });
+    console.log('User  fetched from DB:', user);
+
+    if (!user) {
+      console.log('User  not found with emailId:', email_id);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    console.log('Stored hash:', user.password);
+    const validPassword = await bcrypt.compare(password, user.password);
+    console.log('Password match:', validPassword);
+
+    if (!validPassword) {
+      console.log('Password does not match for emailId:', email_id);
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!user.isApproved) {
+      console.log('User  not approved:', email_id);
+      return res.status(403).json({ error: 'Account not approved yet. Please wait for admin approval.' });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        emailId: user.emailId,
+        hospitalDbName: user.hospitalDbName,
+        hospitalName: user.hospitalName,
+        role: user.role || 'hospital_admin',
+        email: user.email,
+        contactPersonName: user.contactPersonName,
+      },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '24h' }
+    );
+
+    console.log('Token generated for:', user.emailId);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined,
     });
-    
+
     res.json({
-      totalStaff,
-      activeShifts: activeShifts || Math.floor(totalStaff * 0.7), // Fallback calculation
-      compliance,
-      pendingApprovals: pendingApprovals || Math.floor(Math.random() * 5)
+      success: true,
+      message: 'Login successful',
+      token,
+      user: {
+        hospitalName: user.hospitalName,
+        contactPersonName: user.contactPersonName,
+        email: user.email,
+        role: user.role || 'hospital_admin',
+      },
     });
   } catch (err) {
-    console.error('Dashboard stats error:', err);
-    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Login failed', details: err.message });
   }
 });
 
-// Dashboard alerts
-router.get('/dashboard/alerts', authenticateToken, async (req, res) => {
+
+
+
+// ====================
+// LOGOUT ROUTE
+// ====================
+router.post('/logout', (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined,
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// ====================
+// AUTH CHECK
+// ====================
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const { hospitalId } = req.user;
-    
-    const alerts = [];
-    
-    // Check for expiring certifications
-    const expiringCerts = await Staff.countDocuments({
-      hospitalId,
-      certificationExpiry: {
-        $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-      }
+    const user = await CentralAuth.findById(req.user.userId).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        hospitalName: user.hospitalName,
+        hospitalDbName: user.hospitalDbName,
+        contactPersonName: user.contactPersonName,
+        email: user.email,
+        role: user.role || 'hospital_admin',
+        isApproved: user.isApproved,
+      },
     });
-    
-    if (expiringCerts > 0) {
-      alerts.push({
-        id: `cert-${Date.now()}`,
-        title: 'Staff Certifications Expiring',
-        description: `${expiringCerts} staff member${expiringCerts > 1 ? 's have' : ' has'} certification${expiringCerts > 1 ? 's' : ''} expiring within 30 days`,
-        level: 'high'
-      });
-    }
-    
-    // Check for understaffed shifts (mock logic)
-    const totalStaff = await Staff.countDocuments({ hospitalId });
-    if (totalStaff < 5) {
-      alerts.push({
-        id: `staff-${Date.now()}`,
-        title: 'Low Staff Count',
-        description: 'Consider recruiting additional staff members',
-        level: 'critical'
-      });
-    }
-    
-    // Add a success message if no critical issues
-    if (alerts.length === 0) {
-      alerts.push({
-        id: `success-${Date.now()}`,
-        title: 'All Systems Normal',
-        description: 'No critical issues detected in your hospital operations',
-        level: 'info'
-      });
-    }
-    
-    res.json(alerts);
   } catch (err) {
-    console.error('Dashboard alerts error:', err);
-    res.status(500).json({ error: 'Failed to fetch dashboard alerts' });
+    console.error('Auth check error:', err);
+    res.status(500).json({ error: 'Failed to get user info' });
   }
 });
 
-// Dashboard shifts
-router.get('/dashboard/shifts', authenticateToken, async (req, res) => {
+// ====================
+// REFRESH TOKEN ROUTE
+// ====================
+router.post('/refresh-token', authenticateToken, async (req, res) => {
   try {
-    const { hospitalId } = req.user;
-    
-    // Get staff for upcoming shifts (next 24 hours)
-    const staff = await Staff.find({ 
-      hospitalId,
-      status: { $in: ['active', 'on-shift', 'scheduled'] }
-    }).limit(10);
-    
-    const shifts = staff.map((member, index) => {
-      // Generate realistic shift times (you can replace this with actual shift data)
-      const now = new Date();
-      const shiftStart = new Date(now.getTime() + (index * 3 * 60 * 60 * 1000)); // Staggered by 3 hours
-      const shiftEnd = new Date(shiftStart.getTime() + 8 * 60 * 60 * 1000); // 8-hour shifts
-      
-      return {
-        id: member._id.toString(),
-        name: member.name || `${member.firstName || 'Staff'} ${member.lastName || ''}`.trim(),
-        start: shiftStart.toISOString(),
-        end: shiftEnd.toISOString(),
-        role: member.role || member.position || member.department || 'Staff',
-        avatarUrl: member.avatarUrl || member.profileImage || null
-      };
+    const user = await CentralAuth.findById(req.user.userId);
+    if (!user || !user.isApproved) {
+      return res.status(401).json({ error: 'User not found or not approved' });
+    }
+
+    const newToken = jwt.sign(
+      {
+        userId: user._id,
+        hospitalDbName: user.hospitalDbName,
+        hospitalName: user.hospitalName,
+        role: user.role || 'hospital_admin',
+        email: user.email,
+        contactPersonName: user.contactPersonName,
+      },
+      process.env.JWT_SECRET || 'secret',
+      { expiresIn: '24h' }
+    );
+
+    res.cookie('token', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined,
     });
-    
-    res.json(shifts);
+
+    res.json({ success: true, message: 'Token refreshed successfully', token: newToken });
   } catch (err) {
-    console.error('Dashboard shifts error:', err);
-    res.status(500).json({ error: 'Failed to fetch dashboard shifts' });
+    console.error('Token refresh error:', err);
+    res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
 
-// ===============================
-// ADMIN ROUTES
-// ===============================
+// ====================
+// ADMIN USER MANAGEMENT ROUTES
+// ====================
 
-// Get all users
+// List all registered hospitals (admin only)
 router.get('/admin/users', authenticateToken, async (req, res) => {
   try {
-    // Optional: Add role-based access control
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    if (!['admin', 'super_admin'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
-    const users = await User.find().select('-password'); // Exclude passwords
+    const users = await CentralAuth.find().select('-password');
     res.json(users);
   } catch (err) {
     console.error('Admin users fetch error:', err);
@@ -215,14 +327,14 @@ router.get('/admin/users', authenticateToken, async (req, res) => {
   }
 });
 
-// Approve user
+// Approve hospital registration (admin only)
 router.patch('/admin/users/:id/approve', authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+    if (!['admin', 'super_admin'].includes(req.user.role)) {
       return res.status(403).json({ error: 'Access denied. Admin role required.' });
     }
-    
-    const user = await User.findById(req.params.id);
+
+    const user = await CentralAuth.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     user.isApproved = true;
@@ -245,96 +357,147 @@ router.patch('/admin/users/:id/approve', authenticateToken, async (req, res) => 
     };
 
     await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: 'User approved and email sent' });
+
+    res.json({ success: true, message: 'Hospital approved and email sent' });
   } catch (err) {
-    console.error('User approval error:', err);
+    console.error('Hospital approval error:', err);
     res.status(500).json({ error: 'Approval failed', details: err.message });
   }
 });
 
-// Reject user (delete)
-router.patch('/admin/users/:id/reject', authenticateToken, async (req, res) => {
+// ====================
+// MULTI-TENANT DASHBOARD ROUTES
+// ====================
+
+// Get dashboard stats for tenant hospital
+router.get('/dashboard/stats', authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied. Admin role required.' });
-    }
-    
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    const Staff = await getTenantModel(req.user.hospitalDbName, 'Staff', staffSchema);
 
-    await User.findByIdAndDelete(req.params.id);
+    const totalStaff = await Staff.countDocuments();
+    const activeShifts = await Staff.countDocuments({ status: { $in: ['active', 'on-shift'] } });
+    const allStaff = await Staff.find({});
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'HSS account registration status',
-      html: `
-        <div style="font-family:Arial,sans-serif;border:1px solid #f5c6cb;padding:20px;background:#f8d7da;border-radius:10px">
-          <h2 style="color:#721c24">HSS Registration Update</h2>
-          <p>Hello ${user.contactPersonName},</p>
-          <p>Unfortunately, your registration for <strong>${user.hospitalName}</strong> was <strong>not approved</strong> at this time.</p>
-          <p>If you believe this is an error, please contact our support team.</p>
-          <hr style="margin:20px 0">
-          <p style="font-size:12px;color:#666">This is an automated message from the HSS System.</p>
-        </div>
-      `,
+    const validCompliance = allStaff.filter((staff) => {
+      const certExpiry = staff.certificationExpiry;
+      return certExpiry && new Date(certExpiry) > new Date();
+    }).length;
+
+    const compliance = {
+      valid: validCompliance,
+      invalid: totalStaff - validCompliance,
     };
 
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: 'User rejected and deleted' });
+    const pendingApprovals = await Staff.countDocuments({ status: 'pending' });
+
+    res.json({
+      totalStaff,
+      activeShifts: activeShifts || Math.floor(totalStaff * 0.7),
+      compliance,
+      pendingApprovals: pendingApprovals || 0,
+    });
   } catch (err) {
-    console.error('User rejection error:', err);
-    res.status(500).json({ error: 'Rejection failed', details: err.message });
+    console.error('Dashboard stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 });
 
-// Unapprove user (reverse approval)
-router.patch('/admin/users/:id/unapprove', authenticateToken, async (req, res) => {
+// Get dashboard alerts
+router.get('/dashboard/alerts', authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ error: 'Access denied. Admin role required.' });
+    const Staff = await getTenantModel(req.user.hospitalDbName, 'Staff', staffSchema);
+
+    const alerts = [];
+
+    const expiringCerts = await Staff.countDocuments({
+      'certifications.expiryDate': {
+        $lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    if (expiringCerts > 0) {
+      alerts.push({
+        id: `cert-${Date.now()}`,
+        title: 'Staff Certifications Expiring',
+        description: `${expiringCerts} staff member${expiringCerts > 1 ? 's have' : ' has'} certification${expiringCerts > 1 ? 's' : ''} expiring within 30 days`,
+        level: 'high',
+      });
     }
-    
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    user.isApproved = false;
-    await user.save();
+    const totalStaff = await Staff.countDocuments();
+    if (totalStaff < 5) {
+      alerts.push({
+        id: `staff-${Date.now()}`,
+        title: 'Low Staff Count',
+        description: 'Consider recruiting additional staff members',
+        level: 'critical',
+      });
+    }
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'HSS account status changed',
-      html: `
-        <div style="font-family:Arial,sans-serif;border:1px solid #ffeeba;padding:20px;background:#fff3cd;border-radius:10px">
-          <h2 style="color:#856404">Account Status Update</h2>
-          <p>Hello ${user.contactPersonName},</p>
-          <p>Your HSS account approval for <strong>${user.hospitalName}</strong> has been <strong>temporarily revoked</strong>.</p>
-          <p>Please contact our support team for more information.</p>
-          <hr style="margin:20px 0">
-          <p style="font-size:12px;color:#666">This is an automated message from the HSS System.</p>
-        </div>
-      `,
-    };
+    const pendingStaff = await Staff.countDocuments({ status: 'pending' });
+    if (pendingStaff > 0) {
+      alerts.push({
+        id: `pending-${Date.now()}`,
+        title: 'Pending Staff Approvals',
+        description: `${pendingStaff} staff member${pendingStaff > 1 ? 's are' : ' is'} awaiting approval`,
+        level: 'high',
+      });
+    }
 
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: 'User unapproved and email sent' });
+    if (alerts.length === 0) {
+      alerts.push({
+        id: `success-${Date.now()}`,
+        title: 'All Systems Normal',
+        description: 'No critical issues detected in your hospital operations',
+        level: 'info',
+      });
+    }
+
+    res.json(alerts);
   } catch (err) {
-    console.error('User unapproval error:', err);
-    res.status(500).json({ error: 'Unapproval failed', details: err.message });
+    console.error('Dashboard alerts error:', err);
+    res.status(500).json({ error: 'Failed to fetch dashboard alerts' });
   }
 });
 
-// ===============================
-// STAFF ROUTES
-// ===============================
+// Get dashboard shifts info
+router.get('/dashboard/shifts', authenticateToken, async (req, res) => {
+  try {
+    const Staff = await getTenantModel(req.user.hospitalDbName, 'Staff', staffSchema);
 
-// Get staff members by hospitalId (now authenticated)
+    const staff = await Staff.find({ status: { $in: ['active', 'on-shift'] } }).limit(10);
+
+    const shifts = staff.map((member, index) => {
+      const now = new Date();
+      const shiftStart = new Date(now.getTime() + index * 3 * 60 * 60 * 1000);
+      const shiftEnd = new Date(shiftStart.getTime() + 8 * 60 * 60 * 1000);
+
+      return {
+        id: member._id.toString(),
+        name: member.fullName || `${member.firstName || ''} ${member.lastName || ''}`.trim(),
+        start: shiftStart.toISOString(),
+        end: shiftEnd.toISOString(),
+        role: member.role || member.position || 'Staff',
+        avatarUrl: member.profileImage || null,
+      };
+    });
+
+    res.json(shifts);
+  } catch (err) {
+    console.error('Dashboard shifts error:', err);
+    res.status(500).json({ error: 'Failed to fetch dashboard shifts' });
+  }
+});
+
+// ====================
+// STAFF MANAGEMENT ROUTES
+// ====================
+
+// Get all staff for tenant hospital
 router.get('/staff', authenticateToken, async (req, res) => {
   try {
-    const { hospitalId } = req.user; // Get from authenticated user
-    
-    const staff = await Staff.find({ hospitalId }).lean();
+    const Staff = await getTenantModel(req.user.hospitalDbName, 'Staff', staffSchema);
+    const staff = await Staff.find({}).lean();
     res.json({ success: true, staff });
   } catch (err) {
     console.error('Error fetching staff:', err);
@@ -342,323 +505,120 @@ router.get('/staff', authenticateToken, async (req, res) => {
   }
 });
 
-// ===============================
-// AUTHENTICATION ROUTES - IMPROVED
-// ===============================
-
-// Register
-router.post('/register', async (req, res) => {
+// Add new staff member
+router.post('/staff', authenticateToken, async (req, res) => {
   try {
-    const {
-      hospital_name, province, city,
-      contact_person_name, email, email_id,
-      phone_number, password, recaptcha_token
-    } = req.body;
+    const Staff = await getTenantModel(req.user.hospitalDbName, 'Staff', staffSchema);
 
-    if (!recaptcha_token) return res.status(400).json({ error: 'Missing reCAPTCHA token' });
-
-    const secretKey = process.env.RECAPTCHA_SECRET;
-    const { data: recaptchaRes } = await axios.post(
-      `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${recaptcha_token}`
-    );
-    if (!recaptchaRes.success) return res.status(400).json({ error: 'reCAPTCHA verification failed' });
-
-    const existing = await User.findOne({ emailId: email_id });
-    if (existing) return res.status(400).json({ error: 'User already exists with this Employer ID' });
-
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) return res.status(400).json({ error: 'User already exists with this email address' });
-
-    const hashedPassword = await bcrypt.hash(password, 12); // Increased salt rounds for better security
-    const newUser = new User({
-      ...mapRequestToUserSchema(req.body),
-      password: hashedPassword,
-      isApproved: false,
-      createdAt: new Date(),
+    const existingStaff = await Staff.findOne({
+      $or: [{ emailId: req.body.emailId }, { email: req.body.email }, { idNumber: req.body.idNumber }],
     });
 
-    await newUser.save();
+    if (existingStaff) {
+      return res.status(400).json({ error: 'Staff member already exists with this Email ID, email, or ID number' });
+    }
 
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Confirm your registration with HSS',
-      html: `
-        <div style="font-family:Arial,sans-serif;border:1px solid #ddd;padding:20px;border-radius:10px">
-          <h2 style="color:#6A0DAD">Welcome to HSS</h2>
-          <p>Hello ${contact_person_name},</p>
-          <p>Thank you for registering <strong>${hospital_name}</strong> with our Healthcare Staff Scheduling system.</p>
-          <p>Your registration is currently under review. You'll receive a notification email once your account has been approved.</p>
-          <p>This process typically takes 1-2 business days.</p>
-          <hr style="margin:20px 0">
-          <p style="font-size:12px;color:#666">This is an automated message from the HSS System.</p>
-        </div>
-      `,
-    };
+    const newStaff = new Staff(req.body);
+    await newStaff.save();
 
-    await transporter.sendMail(mailOptions);
-    res.status(201).json({ success: true, message: 'Registration successful. Please wait for admin approval.' });
+    res.status(201).json({ success: true, message: 'Staff member added', staff: newStaff });
   } catch (err) {
-    console.error('Registration error:', err);
-    res.status(500).json({ error: 'Registration failed', details: err.message });
+    console.error('Error adding staff:', err);
+    res.status(500).json({ error: 'Failed to add staff' });
   }
 });
 
-// Login - IMPROVED WITH CROSS-ORIGIN SUPPORT
-router.post('/login', async (req, res) => {
+// ====================
+// PASSWORD RESET FLOW
+// ====================
+
+// Request password reset (generate 2FA code)
+router.post('/password-reset/request', async (req, res) => {
   try {
-    const { email_id, password } = req.body;
-    
-    if (!email_id || !password) {
-      return res.status(400).json({ error: 'Email ID and password are required' });
-    }
+    const { emailId } = req.body;
+    if (!emailId) return res.status(400).json({ error: 'Email ID is required' });
 
-    const user = await User.findOne({ emailId: email_id });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    const user = await CentralAuth.findOne({ emailId });
+    if (!user) return res.status(404).json({ error: 'No user found with that Email ID' });
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    if (!user.isApproved) {
-      return res.status(403).json({ error: 'Account not approved yet. Please wait for admin approval.' });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        hospitalId: user._id, // Using user ID as hospital ID for now
-        hospitalName: user.hospitalName,
-        role: user.role || 'user',
-        email: user.email,
-        contactPersonName: user.contactPersonName
-      },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '24h' } // Extended to 24 hours
-    );
-
-    // Set secure cookie with cross-origin settings
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: true, // Always true for production (Render.com requires HTTPS)
-      sameSite: 'none', // Required for cross-origin cookies
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
-    });
-
-    res.json({ 
-      success: true, 
-      message: 'Login successful',
-      token, // Also send token in response for frontend fallback
-      user: {
-        hospitalName: user.hospitalName,
-        contactPersonName: user.contactPersonName,
-        email: user.email,
-        role: user.role || 'user'
-      }
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed', details: err.message });
-  }
-});
-
-// Logout - IMPROVED
-router.post('/logout', (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none',
-    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
-  });
-  res.json({ success: true, message: 'Logged out successfully' });
-});
-
-// Check authentication status - IMPROVED
-router.get('/me', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId).select('-password');
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        hospitalName: user.hospitalName,
-        contactPersonName: user.contactPersonName,
-        email: user.email,
-        role: user.role || 'user',
-        isApproved: user.isApproved
-      }
-    });
-  } catch (err) {
-    console.error('Auth check error:', err);
-    res.status(500).json({ error: 'Failed to get user info' });
-  }
-});
-
-// ===============================
-// TOKEN REFRESH ROUTE (NEW)
-// ===============================
-router.post('/refresh-token', authenticateToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.userId);
-    if (!user || !user.isApproved) {
-      return res.status(401).json({ error: 'User not found or not approved' });
-    }
-
-    // Generate new token
-    const newToken = jwt.sign(
-      {
-        userId: user._id,
-        hospitalId: user._id,
-        hospitalName: user.hospitalName,
-        role: user.role || 'user',
-        email: user.email,
-        contactPersonName: user.contactPersonName
-      },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '24h' }
-    );
-
-    // Set new cookie
-    res.cookie('token', newToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000,
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
-    });
-
-    res.json({ 
-      success: true, 
-      message: 'Token refreshed successfully',
-      token: newToken 
-    });
-  } catch (err) {
-    console.error('Token refresh error:', err);
-    res.status(500).json({ error: 'Failed to refresh token' });
-  }
-});
-
-// ===============================
-// 2FA ROUTES (Currently disabled)
-// ===============================
-/*
-// Uncomment and configure when ready to enable 2FA
-const { Resend } = require('resend');
-const resend = new Resend(process.env.VITE_RESEND_API_KEY);
-
-router.post('/send-2fa', async (req, res) => {
-  try {
-    const { email_id } = req.body;
-
-    if (!email_id) {
-      return res.status(400).json({ error: 'Missing email_id' });
-    }
-
-    const user = await User.findOne({ emailId: email_id });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
-
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
     user.twoFA_code = code;
-    user.twoFA_expires = expires;
+    user.twoFA_expires = new Date(Date.now() + 15 * 60 * 1000); // 15 min expiration
     await user.save();
 
-    await resend.emails.send({
-      from: process.env.EMAIL_USER,
+    // Send reset code email
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || `"HSS System" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: 'Your HSS 2FA Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd;">
-          <h2>HSS Login Code</h2>
-          <p>Hello ${user.contactPersonName || 'User'},</p>
-          <p>Your verification code is:</p>
-          <h1 style="color: #6A0DAD">${code}</h1>
-          <p>This code is valid for 10 minutes.</p>
-        </div>
-      `,
+      subject: 'Your password reset code',
+      html: `<p>Your password reset code is <b>${code}</b>. It expires in 15 minutes.</p>`,
     });
 
-    res.json({ success: true, message: '2FA code sent successfully' });
+    res.json({ success: true, message: 'Password reset code sent to your email' });
   } catch (err) {
-    console.error('Error sending 2FA:', err.message);
-    res.status(500).json({ error: 'Failed to send 2FA code', details: err.message });
+    console.error('Password reset request error:', err);
+    res.status(500).json({ error: 'Failed to request password reset' });
   }
 });
 
-router.post('/verify-2fa', async (req, res) => {
+// Confirm password reset (verify code and update password)
+router.post('/password-reset/confirm', async (req, res) => {
   try {
-    const { email_id, code, tempToken } = req.body;
-    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET || 'secret');
+    const { emailId, code, newPassword } = req.body;
+    if (!emailId || !code || !newPassword) return res.status(400).json({ error: 'Missing required fields' });
 
-    const user = await User.findOne({ emailId: email_id });
-    if (!user || user.twoFA_code !== code || new Date() > user.twoFA_expires) {
+    const user = await CentralAuth.findOne({ emailId });
+    if (!user) return res.status(404).json({ error: 'No user found with that Email ID' });
+
+    if (!user.twoFA_code || !user.twoFA_expires || user.twoFA_code !== code) {
       return res.status(400).json({ error: 'Invalid or expired code' });
     }
 
-    user.twoFA_code = undefined;
-    user.twoFA_expires = undefined;
+    if (new Date() > user.twoFA_expires) {
+      return res.status(400).json({ error: 'Code expired' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    user.twoFA_code = null;
+    user.twoFA_expires = null;
     await user.save();
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        hospitalId: user.hospitalId,
-        role: user.role,
-      },
-      process.env.JWT_SECRET || 'secret',
-      { expiresIn: '24h' }
-    );
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000,
-      domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
-    }).json({ success: true, message: '2FA verified successfully' });
-
+    res.json({ success: true, message: 'Password reset successful' });
   } catch (err) {
-    console.error('2FA verification error:', err);
-    res.status(500).json({ error: 'Verification failed', details: err.message });
+    console.error('Password reset confirm error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
-*/
 
-// ===============================
+// ====================
 // UTILITY ROUTES
-// ===============================
+// ====================
 
-// Geocode
-router.post('/geocode', async (req, res) => {
-  const { lat, lon } = req.body;
-  if (!lat || !lon) return res.status(400).json({ error: 'Missing latitude and longitude' });
-
+// Example: Geocode address route using external API
+router.post('/geocode', authenticateToken, async (req, res) => {
   try {
-    const response = await axios.get('https://nominatim.openstreetmap.org/reverse', {
-      params: { format: 'json', lat, lon },
-      headers: { 'User-Agent': 'HSS-Geocoder/1.0 (support@yourdomain.com)' },
+    const { address } = req.body;
+    if (!address) return res.status(400).json({ error: 'Address is required' });
+
+    // Use a geocoding API, e.g. Google Maps Geocode API
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const response = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
+      params: {
+        address,
+        key: apiKey,
+      },
     });
 
-    res.json({ 
-      success: true, 
-      address: response.data.display_name,
-      details: response.data.address 
-    });
+    if (response.data.status !== 'OK') {
+      return res.status(400).json({ error: 'Failed to geocode address' });
+    }
+
+    const location = response.data.results[0].geometry.location;
+
+    res.json({ success: true, location });
   } catch (err) {
-    console.error('Geocoding error:', err);
-    res.status(500).json({ error: 'Geocoding failed' });
+    console.error('Geocode error:', err);
+    res.status(500).json({ error: 'Failed to geocode address' });
   }
 });
 
