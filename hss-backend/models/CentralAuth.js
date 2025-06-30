@@ -1,17 +1,31 @@
 const mongoose = require('mongoose');
 
-const userSchema = new mongoose.Schema(
+const centralAuthSchema = new mongoose.Schema(
   {
-    hospitalId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Hospital',
-      required: true,
-    },
-    name: {
+    hospitalName: {
       type: String,
-      required: [true, 'Name is required'],
+      required: [true, 'Hospital name is required'],
       trim: true,
-      minlength: 2,
+    },
+    hospitalDbName: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    province: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    contactPersonName: {
+      type: String,
+      required: [true, 'Contact person name is required'],
+      trim: true,
     },
     email: {
       type: String,
@@ -23,7 +37,7 @@ const userSchema = new mongoose.Schema(
     },
     emailId: {
       type: String,
-      required: [true, 'Email ID is required'],
+      required: [true, 'Employee id is required'],
       unique: true,
       trim: true,
       minlength: 3,
@@ -44,33 +58,28 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     gps_coordinates: {
-      type: String,
+      type: String, // Format example: "lat,lon"
       trim: true,
     },
     location_address: {
       type: String,
       trim: true,
     },
+    role: {
+      type: String,
+      enum: ['hospital_admin', 'admin', 'super_admin'],
+      default: 'hospital_admin',
+    },
     isApproved: {
       type: Boolean,
       default: false,
     },
-    twoFA_code: {
-      type: String,
-      default: null,
-    },
-    twoFA_expires: {
+    lastLogin: {
       type: Date,
       default: null,
-    },
-    role: {
-      type: String,
-      enum: ['admin', 'user', 'doctor', 'nurse', 'staff'],
-      default: 'user',
     },
   },
   { timestamps: true }
 );
 
-// Export just the schema (not a model)
-module.exports = userSchema;
+module.exports = mongoose.model('CentralAuth', centralAuthSchema);

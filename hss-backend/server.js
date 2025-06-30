@@ -6,6 +6,7 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const geocodeRoutes = require('./routes/geocode');
 const dashboardRoutes = require('./routes/dashboard');
+const { closeAllTenantConnections } = require('./utils/multiTenantDb'); // ✅ ADD THIS
 
 // Initialize environment variables
 dotenv.config();
@@ -14,17 +15,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Define allowed origins (merged your lists, add or remove as needed)
+// Define allowed origins
 const allowedOrigins = [
   'http://localhost:8080',
   'https://www.healthcaresecuresystems.co.za',
+  'https://your-frontend-domain.com',
 ];
 
 // CORS options
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
-      // Allow requests with no origin (like mobile apps or curl) or in allowed list
       callback(null, true);
     } else {
       console.warn(`Blocked by CORS: ${origin}`);
@@ -32,22 +33,18 @@ const corsOptions = {
     }
   },
   credentials: true,
-  exposedHeaders: ['set-cookie'],           // Your custom exposed headers
+  exposedHeaders: ['set-cookie'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
-
-// Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Cookie parser
 app.use(cookieParser());
 
-// Logging middleware
+// Logging
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -98,7 +95,7 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Error handling middleware
+// Error handling
 app.use((error, req, res, next) => {
   console.error(`[ERROR] ${req.method} ${req.path}`, {
     error: error.message,
@@ -116,7 +113,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// DB connection with retry logic
+// DB connection with retry
 const connectWithRetry = () => {
   mongoose
     .connect(MONGO_URI, {
@@ -125,20 +122,19 @@ const connectWithRetry = () => {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     })
-    .then(() => console.log('✅ MongoDB connected successfully'))
+    .then(() => console.log(' MongoDB connected successfully'))
     .catch((err) => {
-      console.error('❌ MongoDB connection error:', err.message);
+      console.error(' MongoDB connection error:', err.message);
       console.log('Retrying connection in 5 seconds...');
       setTimeout(connectWithRetry, 5000);
     });
 };
 
-// Start server after DB connects
 const startServer = () => {
   if (mongoose.connection.readyState === 1) {
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`🔑 Auth endpoints available at http://localhost:${PORT}/api/auth`);
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(` Auth endpoints available at http://localhost:${PORT}/api/auth`);
     });
   } else {
     console.log('Waiting for database connection...');
@@ -150,9 +146,11 @@ connectWithRetry();
 startServer();
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
+  console.log('\n Graceful shutdown in progress...');
+  await closeAllTenantConnections(); // ✅ Close all tenant DBs
   mongoose.connection.close(() => {
-    console.log('MongoDB connection closed due to app termination');
+    console.log('✅ Central MongoDB connection closed');
     process.exit(0);
   });
 });
