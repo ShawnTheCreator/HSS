@@ -15,6 +15,7 @@ import {
   FileText,
   ChevronLeft
 } from "lucide-react";
+import { authApi } from "@/lib/api";
 
 type SidebarLink = {
   label: string;
@@ -124,17 +125,8 @@ const Sidebar = () => {
   )}
   onClick={async () => {
     try {
-      const res = await fetch(`https://hss-backend.onrender.com/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        // Optional: clear local state or auth context here if needed
-        window.location.href = '/login'; // 👈 redirect after logout
-      } else {
-        console.error('Logout failed');
-      }
+      await authApi.logout();
+      window.location.href = '/login';
     } catch (err) {
       console.error('Logout error:', err);
     }

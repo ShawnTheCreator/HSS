@@ -13,13 +13,21 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
+const PRIMARY_MONGO_URI = process.env.MONGO_URI;
+const FALLBACK_MONGO_URI = process.env.MONGO_URI_FALLBACK || 'mongodb://127.0.0.1:27017/HSSDB';
+const MONGO_URI = PRIMARY_MONGO_URI || FALLBACK_MONGO_URI;
 
-// Define allowed origins
+// Define allowed origins with env overrides
+const envOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || '')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'http://localhost:8080',
+  'http://localhost:3000',
   'https://www.healthcaresecuresystems.co.za',
-  'https://your-frontend-domain.com',
+  ...envOrigins,
 ];
 
 // CORS options
@@ -117,8 +125,6 @@ app.use((error, req, res, next) => {
 const connectWithRetry = () => {
   mongoose
     .connect(MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     })
@@ -129,6 +135,14 @@ const connectWithRetry = () => {
       setTimeout(connectWithRetry, 5000);
     });
 };
+
+mongoose.connection.on('error', (err) => {
+  console.error(' Mongoose connection error:', err?.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn(' Mongoose disconnected');
+});
 
 const startServer = () => {
   if (mongoose.connection.readyState === 1) {

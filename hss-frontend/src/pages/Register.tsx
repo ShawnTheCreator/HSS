@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import axios from "axios";
+import { authApi, geoApi } from "@/lib/api";
 import ReCAPTCHA from "react-google-recaptcha";
 import DOMPurify from "dompurify";
 
@@ -79,15 +79,8 @@ const getAddressFromCoordinates = async (
   lon: number
 ): Promise<string> => {
   try {
-    const response = await axios.post("https://hss-backend.onrender.com/api/geocode", {
-      lat,
-      lon,
-    });
-
-    const { address } = response.data;
-    return `${address.city || address.town || address.village || ""}, ${
-      address.state || ""
-    }, ${address.country || ""}`;
+    const { address } = await geoApi.reverseGeocode(lat, lon);
+    return `${address.city || address.town || address.village || ""}, ${address.state || ""}, ${address.country || ""}`;
   } catch (error) {
     console.error("Reverse geocoding failed:", error);
     return "Unknown Location";
@@ -237,21 +230,12 @@ const Register = () => {
         recaptcha_token: '[REDACTED]'
       });
 
-      const response = await axios.post(
-        "https://hss-backend.onrender.com/api/auth/register",
-        registrationData,
-        { 
-          headers: { 
-            "Content-Type": "application/json" 
-          },
-          timeout: 30000
-        }
-      );
+      const response = await authApi.register(registrationData);
 
-      if (response.status === 201) {
+      if (response.success) {
         toast({
           title: "Registration Successful",
-          description: response.data.message || "Account created successfully",
+          description: response.message || "Account created successfully",
         });
         navigate("/login");
       }
@@ -259,20 +243,11 @@ const Register = () => {
       console.error('Registration error:', error);
       recaptchaRef.current?.reset();
       setRecaptchaToken(null);
-
-      if (axios.isAxiosError(error)) {
-        toast({
-          title: "Registration Failed",
-          description: error.response?.data?.error || "An error occurred during registration",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Registration Failed",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Registration Failed",
+        description: (error as any)?.response?.data?.error || "An error occurred during registration",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
