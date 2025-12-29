@@ -15,8 +15,8 @@
 
 ## 🚀 Live Demo
 
-- **Live Application**: [https://hss-secure.vercel.app](https://hss-secure.vercel.app)
-- **Demo Account**: demo@hsssecure.co.za / Password123
+- **Live Application**: [https://healthcaresecuresystem.netlify.app/](https://healthcaresecuresystem.netlify.app/)
+- **Demo Account**: admin123 / Password123
 
 ## ✨ Key Features
 
