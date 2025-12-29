@@ -284,17 +284,6 @@ npm run test:all
 # E2E tests
 npm run test:e2e
 ```
-
-## 🐳 Docker Deployment
-
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
-
-# Production build
-docker-compose -f docker-compose.prod.yml up --build
-```
-
 ## 🏆 Hackathon Experience
 
 ### **Achievement**
