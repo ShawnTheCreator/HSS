@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, UserCheck, UserX } from "lucide-react";
+import { adminApi } from "@/lib/api";
 
 interface HospitalUser {
   _id: string;
@@ -36,13 +37,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("https://hss-backend.onrender.com/api/auth/admin/users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await res.json();
+      const data = await adminApi.listUsers();
       setUsers(data);
     } catch (err) {
       toast({ title: "Error", description: "Could not fetch users", variant: "destructive" });
@@ -53,18 +48,7 @@ const AdminDashboard = () => {
 
   const handleApproval = async (id: string, action: "approve" | "reject" | "unapprove") => {
     try {
-      const token = localStorage.getItem("token");
-      const endpoint = `https://hss-backend.onrender.com/api/auth/admin/users/${id}/${action}`;
-
-      const res = await fetch(endpoint, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) throw new Error("Failed to update user approval status");
+      const res = await adminApi.updateApproval(id, action);
 
       let message =
         action === "approve"

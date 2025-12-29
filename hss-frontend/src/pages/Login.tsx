@@ -17,6 +17,7 @@ import AuthCard from "@/components/auth/AuthCard";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import ReCAPTCHA from "react-google-recaptcha";
+import { authApi } from "@/lib/api";
 
 const formSchema = z.object({
   email: z.string().min(3, { message: "Employer ID is required" }),
@@ -29,9 +30,7 @@ const ATTEMPTS_KEY = "loginAttempts";
 const LOCKOUT_KEY = "loginLockoutTime";
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
-const BASE_URL = import.meta.env.DEV
-  ? "http://localhost:5000/api/auth"
-  : "https://hss-backend.onrender.com/api/auth";
+// API base is centrally configured in the client
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -103,22 +102,11 @@ const Login = () => {
     }
 
     try {
-      const payload = {
-        email_id: data.email,
-        password: data.password,
-        recaptcha_token: recaptchaToken,
-      };
+      const payload = { email_id: data.email, password: data.password, recaptcha_token: recaptchaToken };
 
-      const response = await fetch(`${BASE_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+      const result = await authApi.login(payload);
 
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (!result.success) {
         recaptchaRef.current?.reset();
         setRecaptchaToken(null);
         const attemptsLeft = loginAttempts - 1;
@@ -132,7 +120,7 @@ const Login = () => {
           setLoginAttempts(attemptsLeft);
           setErrorMessage(`Invalid credentials. ${attemptsLeft} attempt(s) left.`);
         }
-        throw new Error(result.error || "Login failed");
+        throw new Error((result as any).error || "Login failed");
       }
 
       if (result.token) localStorage.setItem("fallback_token", result.token);

@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { dashboardApi } from "@/lib/api";
 
 interface Stats {
   totalStaff: number;
@@ -41,11 +42,7 @@ interface Shift {
   avatarUrl?: string;
 }
 
-// Use environment variable for API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (import.meta.env.DEV 
-    ? "http://localhost:5000/api" 
-    : "https://hss-backend.onrender.com/api");
+// API base is centrally configured in the client
 
 const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
@@ -88,76 +85,15 @@ const Dashboard = () => {
           navigate("/login");
           return;
         }
-
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        };
-
-        // Corrected endpoints with /auth/dashboard path
-        const endpoints = [
-          `${API_BASE_URL}/auth/dashboard/stats`,
-          `${API_BASE_URL}/auth/dashboard/alerts`,
-          `${API_BASE_URL}/auth/dashboard/shifts`,
-        ];
-
-        // Handle responses with better error checking
-        const handleResponse = async (res: Response, endpointName: string) => {
-          const contentType = res.headers.get('content-type');
-          
-          if (!res.ok) {
-            // Handle HTML responses (like 404 pages)
-            if (contentType?.includes('text/html')) {
-              const text = await res.text();
-              throw new Error(`${endpointName} returned HTML: ${text.substring(0, 100)}...`);
-            }
-            
-            // Try to parse JSON error
-            try {
-              const errorData = await res.json();
-              return errorData;
-            } catch (e) {
-              throw new Error(`${endpointName} request failed with status ${res.status}`);
-            }
-          }
-          
-          // Handle successful JSON responses
-          if (contentType?.includes('application/json')) {
-            return res.json();
-          }
-          
-          throw new Error(`Unexpected response type from ${endpointName}`);
-        };
-
-        // Create reusable fetch function
-        const fetchWithAuth = (url: string) => {
-          return fetch(url, {
-            headers,
-            credentials: "include"
-          });
-        };
-
-        // Fetch all dashboard data in parallel - FIXED SYNTAX
-        const [statsRes, alertsRes, shiftsRes] = await Promise.all([
-          fetchWithAuth(endpoints[0]),
-          fetchWithAuth(endpoints[1]),
-          fetchWithAuth(endpoints[2])
-        ]);
-
         const [statsData, alertsData, shiftsData] = await Promise.all([
-          handleResponse(statsRes, "Stats"),
-          handleResponse(alertsRes, "Alerts"),
-          handleResponse(shiftsRes, "Shifts"),
+          dashboardApi.getStats(),
+          dashboardApi.getAlerts(),
+          dashboardApi.getShifts(),
         ]);
-
-        // Check for error properties in responses
-        if (statsData.error) throw new Error(statsData.error);
-        if (alertsData.error) throw new Error(alertsData.error);
-        if (shiftsData.error) throw new Error(shiftsData.error);
 
         setStats(statsData);
-        setAlerts(alertsData);
-        setShifts(shiftsData);
+        setAlerts(alertsData as any);
+        setShifts(shiftsData as any);
         
       } catch (err) {
         console.error("Dashboard fetch error:", err);
