@@ -1,3 +1,4 @@
+// server.js - CORRECTED VERSION
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
@@ -6,15 +7,18 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const geocodeRoutes = require('./routes/geocode');
 const dashboardRoutes = require('./routes/dashboard');
-const { closeAllTenantConnections } = require('./utils/multiTenantDb'); // ✅ ADD THIS
+const { closeAllTenantConnections } = require('./utils/multiTenantDb');
 
 // Initialize environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRIMARY_MONGO_URI = process.env.MONGO_URI;
-const FALLBACK_MONGO_URI = process.env.MONGO_URI_FALLBACK || 'mongodb://127.0.0.1:27017/HSSDB';
+const rawPrimaryUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+const rawFallbackUri = process.env.MONGO_URI_FALLBACK || 'mongodb://127.0.0.1:27017/HSSDB';
+const normalizeUri = (s) => (s || '').trim().replace(/^['"]|['"]$/g, '');
+const PRIMARY_MONGO_URI = normalizeUri(rawPrimaryUri);
+const FALLBACK_MONGO_URI = normalizeUri(rawFallbackUri);
 const MONGO_URI = PRIMARY_MONGO_URI || FALLBACK_MONGO_URI;
 
 // Define allowed origins with env overrides
@@ -121,50 +125,49 @@ app.use((error, req, res, next) => {
   });
 });
 
-// DB connection with retry
+// DB connection with retry - Starts in background, does NOT block server startup
 const connectWithRetry = () => {
-  mongoose
-    .connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-    })
-    .then(() => console.log(' MongoDB connected successfully'))
-    .catch((err) => {
-      console.error(' MongoDB connection error:', err.message);
-      console.log('Retrying connection in 5 seconds...');
-      setTimeout(connectWithRetry, 5000);
-    });
+  console.log(`Attempting to connect to MongoDB with URI: ${PRIMARY_MONGO_URI ? 'Atlas (Primary)' : 'Local (Fallback)'}`);
+  
+  mongoose.connect(MONGO_URI, {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  })
+  .then(() => console.log('✅ MongoDB connected successfully'))
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err.message);
+    console.log('⏳ Retrying connection in 10 seconds...');
+    setTimeout(connectWithRetry, 10000);
+  });
 };
 
 mongoose.connection.on('error', (err) => {
-  console.error(' Mongoose connection error:', err?.message);
+  console.error('Mongoose connection error:', err?.message);
 });
 
 mongoose.connection.on('disconnected', () => {
-  console.warn(' Mongoose disconnected');
+  console.warn('Mongoose disconnected');
 });
 
-const startServer = () => {
-  if (mongoose.connection.readyState === 1) {
-    app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-      console.log(` Auth endpoints available at http://localhost:${PORT}/api/auth`);
-    });
-  } else {
-    console.log('Waiting for database connection...');
-    setTimeout(startServer, 1000);
-  }
-};
+// ✅ CRITICAL FIX: START THE SERVER IMMEDIATELY
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server is NOW RUNNING on port ${PORT}`);
+  console.log(`   Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`   Auth API: http://localhost:${PORT}/api/auth`);
+});
 
+// Now attempt the DB connection in the background
 connectWithRetry();
-startServer();
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n Graceful shutdown in progress...');
-  await closeAllTenantConnections(); // ✅ Close all tenant DBs
-  mongoose.connection.close(() => {
-    console.log('✅ Central MongoDB connection closed');
-    process.exit(0);
+  console.log('\nGraceful shutdown in progress...');
+  await closeAllTenantConnections(); 
+  server.close(() => {
+    console.log('✅ HTTP server closed.');
+    mongoose.connection.close(false, () => {
+      console.log('✅ MongoDB connection closed.');
+      process.exit(0);
+    });
   });
 });
