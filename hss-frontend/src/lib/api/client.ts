@@ -2,6 +2,8 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } f
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:5000/api" : "https://hss-backend.onrender.com/api");
 
+console.log("API Base URL:", BASE_URL);
+
 const api: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
