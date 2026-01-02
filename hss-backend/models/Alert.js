@@ -3,19 +3,29 @@ const mongoose = require('mongoose');
 
 const alertSchema = new mongoose.Schema(
   {
-    message: {
+    id: {
+      type: String,
+      unique: true,
+      default: () => new mongoose.Types.ObjectId().toString(),
+    },
+    title: {
       type: String,
       required: true,
+      trim: true,
     },
-    severity: {
+    description: {
       type: String,
-      enum: ['low', 'medium', 'high', 'critical'],
-      default: 'low',
-    },
-    hospitalId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Hospital',
       required: true,
+      trim: true,
+    },
+    level: {
+      type: String,
+      enum: ['high', 'critical', 'info', 'medium', 'low'],
+      default: 'info',
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
     },
     createdAt: {
       type: Date,
@@ -25,4 +35,5 @@ const alertSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = alertSchema; // Not model — for multi-tenant use
+// Export Schema only for Multi-tenant use
+module.exports = alertSchema;

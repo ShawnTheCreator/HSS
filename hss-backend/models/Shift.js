@@ -2,42 +2,44 @@ const mongoose = require('mongoose');
 
 const shiftSchema = new mongoose.Schema(
   {
-    hospitalId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Hospital',  // Reference to your Hospital model
-      required: true,
-    },
-    department: {
-      type: String,
-      required: [true, 'Department is required'],
-      trim: true,
-    },
-    staff: {
+    staffId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Staff',
       required: true,
+    },
+    staffName: {
+      type: String,
+      trim: true,
     },
     date: {
       type: Date,
       required: [true, 'Shift date is required'],
     },
     startTime: {
-      type: String,
+      type: Date,
       required: [true, 'Start time is required'],
-      trim: true,
     },
     endTime: {
-      type: String,
+      type: Date,
       required: [true, 'End time is required'],
+    },
+    department: {
+      type: String,
       trim: true,
     },
     shiftType: {
       type: String,
-      enum: ['Morning', 'Evening', 'Night'],
-      required: [true, 'Shift type is required'],
+      enum: ['Morning', 'Evening', 'Night', 'Custom'],
+      default: 'Custom',
+    },
+    status: {
+      type: String,
+      enum: ['Scheduled', 'Completed', 'Missed', 'Cancelled', 'In Progress'],
+      default: 'Scheduled',
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Shift', shiftSchema);
+// Export Schema only for Multi-tenant use
+module.exports = shiftSchema;

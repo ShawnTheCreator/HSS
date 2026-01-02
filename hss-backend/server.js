@@ -14,7 +14,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const rawPrimaryUri = process.env.MONGO_URI || process.env.MONGODB_URI;
+const rawPrimaryUri = process.env.MONGODB_URL || process.env.MONGO_URI || process.env.MONGODB_URI;
 const rawFallbackUri = process.env.MONGO_URI_FALLBACK || 'mongodb://127.0.0.1:27017/HSSDB';
 const normalizeUri = (s) => (s || '').trim().replace(/^['"]|['"]$/g, '');
 const PRIMARY_MONGO_URI = normalizeUri(rawPrimaryUri);

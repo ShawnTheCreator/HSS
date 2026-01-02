@@ -2,11 +2,6 @@ const mongoose = require('mongoose');
 
 const staffSchema = new mongoose.Schema(
   {
-    hospitalId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Hospital', // Reference to the Hospital model
-      required: true,
-    },
     firstName: {
       type: String,
       required: [true, 'First name is required'],
@@ -19,11 +14,6 @@ const staffSchema = new mongoose.Schema(
       trim: true,
       minlength: 2,
     },
-    department: {
-      type: String,
-      required: [true, 'Department is required'],
-      trim: true,
-    },
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -32,33 +22,66 @@ const staffSchema = new mongoose.Schema(
       trim: true,
       match: [/.+@.+\..+/, 'Please enter a valid email address'],
     },
+    emailId: {
+      type: String,
+      trim: true,
+      unique: true,
+    },
+    idNumber: {
+      type: String,
+      trim: true,
+    },
     phoneNumber: {
       type: String,
       required: [true, 'Phone number is required'],
       trim: true,
       match: [/^\+?[0-9]{7,15}$/, 'Please enter a valid phone number'],
     },
+    role: {
+      type: String,
+      default: 'Staff',
+    },
+    position: {
+      type: String,
+      trim: true,
+    },
+    department: {
+      type: String,
+      required: [true, 'Department is required'],
+      trim: true,
+    },
     shift: {
       type: String,
-      enum: ['Morning', 'Evening', 'Night'],
-      required: [true, 'Shift is required'],
+      enum: ['Morning', 'Evening', 'Night', 'Flexible'],
+      default: 'Flexible',
+    },
+    status: {
+      type: String,
+      enum: ['active', 'on-shift', 'leave', 'pending', 'inactive'],
+      default: 'active',
+    },
+    certificationExpiry: {
+      type: Date,
+    },
+    certifications: [
+      {
+        name: String,
+        expiryDate: Date,
+        fileUrl: String,
+      },
+    ],
+    profileImage: {
+      type: String, // URL to profile image
+      trim: true,
     },
     availability: {
       type: String,
       enum: ['Available', 'Not Available'],
-      required: [true, 'Availability is required'],
-    },
-    complianceStatus: {
-      type: String,
-      enum: ['Compliant', 'Non-Compliant', 'Review Needed'],
-      default: 'Review Needed',
-    },
-    profilePictureUrl: {
-      type: String, // Optional field to store profile picture link
-      trim: true,
+      default: 'Available',
     },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Staff', staffSchema);
+// Export Schema only for Multi-tenant use
+module.exports = staffSchema;
