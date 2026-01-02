@@ -31,6 +31,8 @@ const allowedOrigins = [
   'http://localhost:8080',
   'http://localhost:3000',
   'https://www.healthcaresecuresystems.co.za',
+  'https://healthcaresecuresystem.netlify.app',
+  'https://healthcaresecuresystems.netlify.app',
   ...envOrigins,
 ];
 
