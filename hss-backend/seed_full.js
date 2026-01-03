@@ -38,6 +38,23 @@ const DEMO_USER = {
   role: "hospital_admin",
 };
 
+const ADMIN_USER = {
+  hospitalName: "HSS Admin",
+  hospitalDbName: "hss_admin_hospital",
+  province: "Gauteng",
+  city: "Johannesburg",
+  contactPersonName: "System Administrator",
+  email: "admin@hss.com",
+  emailId: "admin@hss.com",
+  phoneNumber: "+27110000001",
+  password: "Admin@123",
+  device_fingerprint: "admin_seed_fingerprint",
+  gps_coordinates: "-26.2041,28.0473",
+  location_address: "Admin HQ, Tech City",
+  isApproved: true,
+  role: "admin",
+};
+
 // Seed Data for the Tenant Database
 const SEED_DATA = {
   staff: [
@@ -172,6 +189,27 @@ async function seed() {
       console.log('✅ New user created.');
     }
 
+    // 2b. Seed Admin CentralAuth User
+    console.log(`\n👤 Seeding Admin User: ${ADMIN_USER.email}...`);
+    const existingAdmin = await CentralAuth.findOne({ email: ADMIN_USER.email });
+    if (existingAdmin) {
+      console.log('⚠️ Admin already exists. Updating password and role...');
+      existingAdmin.password = await bcrypt.hash(ADMIN_USER.password, 12);
+      existingAdmin.role = 'admin';
+      existingAdmin.isApproved = true;
+      existingAdmin.hospitalDbName = ADMIN_USER.hospitalDbName;
+      await existingAdmin.save();
+      console.log('✅ Admin updated.');
+    } else {
+      const adminHashed = await bcrypt.hash(ADMIN_USER.password, 12);
+      const newAdmin = new CentralAuth({
+        ...ADMIN_USER,
+        password: adminHashed,
+      });
+      await newAdmin.save();
+      console.log('✅ New admin created.');
+    }
+
     // 3. Connect to Tenant Database
     console.log(`\n🏥 Switching to Tenant Database: ${DEMO_USER.hospitalDbName}...`);
     tenantConnection = mongoose.connection.useDb(DEMO_USER.hospitalDbName, { useCache: true });
@@ -236,6 +274,7 @@ async function seed() {
 
     console.log('\n✨ SEEDING COMPLETE! ✨');
     console.log(`👉 Login with: ${DEMO_USER.emailId} / ${DEMO_USER.password}`);
+    console.log(`👉 Admin login: ${ADMIN_USER.emailId} / ${ADMIN_USER.password}`);
 
   } catch (error) {
     console.error('\n❌ SEEDING FAILED:', error);
