@@ -1,3 +1,9 @@
+I have revised your `README.md` file. The new content organizes the original information more clearly, adds explanations, and incorporates the requested **Screenshots** section.
+
+You can replace your existing `README.md` file with the text below.
+
+---
+
 # HSS Secure - Healthcare Staff Management System 🏥
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -13,323 +19,222 @@
 
 **HSS Secure** is a comprehensive healthcare staff management platform designed to simplify scheduling, monitor compliance, and streamline communication between medical professionals. Built with security and usability in mind, it helps healthcare organizations reduce administrative workload by up to 40% while ensuring HPCSA compliance.
 
-## 🚀 Live Demo
+## 🚀 Live Demo & Quick Access
 
 - **Live Application**: [https://healthcaresecuresystem.netlify.app/](https://healthcaresecuresystem.netlify.app/)
-- **Demo Account**: admin123 / Password123
+- **Demo Account**: `admin123` / `Password123`
+- **Backend API**: Deployed on Render (see Environment Setup)
 
 ## ✨ Key Features
 
-### 📊 **Real-time Staff Management**
-- Live shift tracking and assignment
-- Instant notifications for schedule changes
-- Mobile-friendly interface for on-the-go access
-
-### 🛡️ **Compliance & Security**
-- HPCSA-compliant data security protocols
-- Automated certification and license tracking
-- Role-based access control with audit trails
-
-### 📈 **Analytics Dashboard**
-- Real-time staffing metrics and insights
-- Overtime tracking and reporting
-- Compliance status monitoring (86% average)
-
-### 🔄 **Efficient Scheduling**
-- Automated shift creation and assignment
-- Conflict detection and resolution
-- Staff availability management
+| Feature Area | Description | Impact |
+| :--- | :--- | :--- |
+| **📊 Real-time Staff Management** | Live shift tracking, assignment, and mobile-friendly interface. | Enables on-the-go access and instant updates for all staff. |
+| **🛡️ Compliance & Security** | Automated HPCSA-compliant tracking, role-based access, and audit trails. | Ensures data security and helps maintain an average 86% compliance status. |
+| **📈 Analytics Dashboard** | Real-time metrics, overtime tracking, and compliance reporting. | Provides actionable insights for management to optimize staffing. |
+| **🔄 Efficient Scheduling** | Automated shift creation with conflict detection and resolution. | Reduces manual scheduling errors and administrative time. |
 
 ## 🏗️ Technology Stack
 
 ### **Frontend**
 - **Framework**: Next.js 14 (App Router)
-- **UI Library**: React 18 with TypeScript
+- **Language**: React 18 with TypeScript
 - **Styling**: Tailwind CSS + CSS Modules
 - **State Management**: React Context + Custom Hooks
 - **Forms**: React Hook Form with Zod validation
-- **Charts**: Recharts for data visualization
+- **Charts**: Recharts
 - **Notifications**: React Hot Toast
 
 ### **Backend**
 - **Runtime**: Node.js 18+
 - **Framework**: Express.js
 - **Authentication**: JWT + bcrypt
-- **API Documentation**: Swagger/OpenAPI
+- **API Docs**: Swagger/OpenAPI
 - **Validation**: Joi
 - **Security**: Helmet, CORS, rate limiting
 
-### **Database & Storage**
-- **Primary Database**: MongoDB Atlas
-- **ODM**: Mongoose
-- **Data Modeling**: Schema-based with validation
-- **Backup**: Automated daily backups
-
-### **Infrastructure**
+### **Database & Infrastructure**
+- **Database**: MongoDB Atlas with Mongoose ODM
 - **Hosting**: Vercel (Frontend), Railway/Render (Backend)
 - **Monitoring**: LogRocket, Sentry
 - **CI/CD**: GitHub Actions
-- **Testing**: Jest, React Testing Library
 
 ## 📁 Project Structure
 
 ```
 hss-secure/
-├── frontend/                    # Next.js Application
-│   ├── app/                    # App Router pages
-│   │   ├── dashboard/         # Dashboard pages
-│   │   ├── scheduling/        # Scheduling pages
-│   │   ├── compliance/        # Compliance tracking
-│   │   └── api/              # API routes (serverless)
-│   ├── components/            # Reusable components
-│   │   ├── ui/               # Base UI components
-│   │   ├── dashboard/        # Dashboard components
-│   │   └── scheduling/       # Scheduling components
-│   ├── lib/                  # Utilities & configurations
-│   │   ├── api/              # API client
-│   │   ├── auth/             # Authentication logic
-│   │   └── validations/      # Form validations
-│   ├── types/                # TypeScript definitions
-│   └── styles/               # Global styles
-│
-├── backend/                   # Node.js Server
+├── frontend/                 # Next.js Application (App Router)
+│   ├── app/                 # Pages & API routes
+│   ├── components/          # Reusable UI components
+│   ├── lib/                 # API client, auth, utilities
+│   ├── types/               # TypeScript definitions
+│   └── styles/              # Global styles
+├── backend/                  # Node.js/Express API Server
 │   ├── src/
-│   │   ├── controllers/      # Route controllers
+│   │   ├── controllers/     # Route logic
 │   │   ├── models/          # MongoDB schemas
-│   │   ├── routes/          # API routes
-│   │   ├── middleware/      # Custom middleware
+│   │   ├── routes/          # API endpoints
+│   │   ├── middleware/      # Custom middleware (auth, validation)
 │   │   └── utils/           # Helper functions
-│   ├── config/              # Configuration files
+│   ├── config/              # Environment configs
 │   └── tests/               # Test suites
-│
-├── shared/                   # Shared code
-│   ├── types/               # Shared TypeScript types
-│   └── constants/           # Shared constants
-│
-└── docker/                  # Docker configurations
+├── shared/                   # Shared code (types, constants)
+└── docker/                  # Container configurations
 ```
+
+## 📸 Screenshots
+
+### 🏠 **Dashboard Overview**
+![Dashboard Overview](screenshots/dashboard-overview.png)
+*Real-time analytics showing staff distribution, compliance status (86%), and upcoming shifts.*
+
+### 📅 **Interactive Scheduling Interface**
+![Scheduling Interface](screenshots/scheduling-interface.png)
+*Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.*
+
+### 🛡️ **Compliance Monitoring Dashboard**
+![Compliance Dashboard](screenshots/compliance-dashboard.png)
+*Detailed compliance tracking showing certification status, renewal deadlines, and audit trails.*
+
+### 📱 **Mobile Staff View**
+![Mobile Staff View](screenshots/mobile-staff-view.png)
+*Mobile-optimized interface allowing staff to view schedules, clock in/out, and receive notifications.*
+
+### 🔐 **Administrative Control Panel**
+![Admin Panel](screenshots/admin-panel.png)
+*Role-based access control panel for managing users, permissions, and system settings.*
+
+### 📊 **Analytics & Reporting**
+![Analytics Dashboard](screenshots/analytics-dashboard.png)
+*Interactive charts showing overtime trends, department performance, and staffing metrics.*
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm/yarn/pnpm
-- MongoDB Atlas account or local MongoDB instance
-- Git
+- **Node.js 18+** and npm/yarn/pnpm
+- **MongoDB Atlas account** or local MongoDB instance
+- **Git**
 
-### Installation
+### Installation & Local Setup
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/your-username/hss-secure.git
-cd hss-secure
-```
+1.  **Clone and navigate into the project:**
+    ```bash
+    git clone https://github.com/ShawnTheCreator/HSS.git
+    cd HSS
+    ```
 
-2. **Install dependencies**
-```bash
-# Install frontend dependencies
-cd frontend
-npm install
+2.  **Install dependencies for both frontend and backend:**
+    ```bash
+    # Install frontend dependencies
+    cd hss-frontend
+    npm install
 
-# Install backend dependencies
-cd ../backend
-npm install
-```
+    # Install backend dependencies
+    cd ../hss-backend
+    npm install
+    ```
 
-3. **Environment Setup**
+3.  **Environment Configuration:**
 
-**Frontend (.env.local):**
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000/api
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key
-NEXTAUTH_URL=http://localhost:3000
-```
+    **Backend (`hss-backend/.env`):**
+    ```env
+    PORT=5000
+    MONGODB_URI=your_mongodb_atlas_connection_string
+    JWT_SECRET=your_secure_jwt_secret_key
+    NODE_ENV=development
+    FRONTEND_URL=http://localhost:5173 # Your Vite frontend URL
+    ```
 
-**Backend (.env):**
-```env
-PORT=5000
-MONGODB_URI=your-mongodb-connection-string
-JWT_SECRET=your-jwt-secret-key
-NODE_ENV=development
-FRONTEND_URL=http://localhost:3000
-```
+    **Frontend (`hss-frontend/.env`):**
+    ```env
+    VITE_API_BASE_URL=http://localhost:5000/api
+    # Add other public configuration variables here
+    ```
 
-4. **Start Development Servers**
+    > **⚠️ Important:** The `.env` file is for local development. **Never commit it to Git.** Use the provided `.env.example` as a template.
 
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm run dev
-```
+4.  **Start the development servers:**
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
+    **Terminal 1 - Start the Backend API:**
+    ```bash
+    cd hss-backend
+    npm run dev
+    # Server runs on http://localhost:5000
+    ```
 
-5. **Access the application**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
-- API Documentation: http://localhost:5000/api-docs
+    **Terminal 2 - Start the Frontend Application:**
+    ```bash
+    cd hss-frontend
+    npm run dev
+    # App runs on http://localhost:5173
+    ```
 
-## 🗄️ Database Schema
+5.  **Access the application:**
+    - **Frontend App:** [http://localhost:5173](http://localhost:5173)
+    - **Backend API:** [http://localhost:5000](http://localhost:5000)
+    - **Health Check:** [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
-### Key Collections
+## 🗄️ Core Database Schemas (Examples)
 
+### User Schema
 ```javascript
-// User Schema
 {
-  _id: ObjectId,
-  email: String,          // Unique
-  password: String,       // Hashed
-  role: ['admin', 'manager', 'staff'],
+  email_id: String,        // Unique identifier for login
+  password: String,        // Hashed
+  role: String,           // 'admin', 'manager', 'staff'
   profile: {
     firstName: String,
     lastName: String,
-    specialization: String,
     contactNumber: String
   },
-  certifications: [{
-    name: String,
-    expiryDate: Date,
-    status: ['active', 'expired', 'pending']
-  }]
+  isActive: Boolean
 }
+```
 
-// Shift Schema
+### Shift Schema
+```javascript
 {
-  _id: ObjectId,
   staffId: ObjectId,
   startTime: Date,
   endTime: Date,
   department: String,
-  status: ['scheduled', 'in-progress', 'completed', 'cancelled'],
-  notes: String
-}
-
-// Compliance Schema
-{
-  _id: ObjectId,
-  userId: ObjectId,
-  checks: [{
-    type: String,        // 'license', 'training', 'certification'
-    status: String,      // 'compliant', 'non-compliant', 'pending'
-    lastVerified: Date
-  }]
+  status: String, // 'scheduled', 'in-progress', 'completed'
 }
 ```
 
-## 🔐 Security Features
+## 🔐 API Endpoints Quick Reference
 
-- **JWT-based Authentication** with refresh tokens
-- **Role-based Access Control** (RBAC) with fine-grained permissions
-- **Data Encryption** at rest and in transit
-- **Input Validation** and sanitization
-- **Rate Limiting** and DDoS protection
-- **Audit Logging** for all critical operations
-- **CSP Headers** and security middleware
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/login` | Authenticate user and return tokens | No |
+| `POST` | `/api/auth/refresh-token` | Refresh access token | Yes |
+| `GET` | `/api/dashboard/summary` | Get dashboard KPIs | Yes |
+| `GET` | `/api/shifts` | List all shifts | Yes |
+| `POST` | `/api/shifts` | Create a new shift | Yes (Admin/Manager) |
 
-## 📊 API Endpoints
-
-### Authentication
-```
-POST   /api/auth/register    # Register new user
-POST   /api/auth/login       # User login
-POST   /api/auth/refresh     # Refresh token
-POST   /api/auth/logout      # User logout
-```
-
-### Staff Management
-```
-GET    /api/staff            # Get all staff
-GET    /api/staff/:id        # Get staff details
-POST   /api/staff            # Create staff profile
-PUT    /api/staff/:id        # Update staff profile
-DELETE /api/staff/:id        # Delete staff (admin only)
-```
-
-### Scheduling
-```
-GET    /api/shifts           # Get all shifts
-GET    /api/shifts/:id       # Get shift details
-POST   /api/shifts           # Create new shift
-PUT    /api/shifts/:id       # Update shift
-DELETE /api/shifts/:id       # Delete shift
-POST   /api/shifts/:id/assign # Assign staff to shift
-```
-
-### Compliance
-```
-GET    /api/compliance       # Get compliance status
-GET    /api/compliance/:userId # User compliance
-POST   /api/compliance/check # Run compliance check
-PUT    /api/compliance/update # Update compliance
-```
-
-## 🧪 Testing
+## 🧪 Running Tests
 
 ```bash
-# Frontend tests
-cd frontend
+# Run backend tests
+cd hss-backend
 npm test
 
-# Backend tests
-cd backend
+# Run frontend tests
+cd hss-frontend
 npm test
-
-# Run all tests
-npm run test:all
-
-# E2E tests
-npm run test:e2e
 ```
-## 🏆 Hackathon Experience
-
-### **Achievement**
-- **Third Place Winner** in Cybersecurity Hackathon
-- Competed against numerous innovative projects
-- Recognized for strong security implementation and healthcare focus
-
-### **Key Learnings**
-- Implementing robust security in healthcare applications
-- Balancing usability with strict compliance requirements
-- Building scalable architectures under time constraints
-- Effective team collaboration in hackathon environment
-
-### **Development Timeline**
-- **48-hour Hackathon Sprint**
-- Rapid prototyping and iterative development
-- Focus on core functionality with security-first approach
-- Successful presentation to judges panel
-
-## 📈 Performance Metrics
-
-- **Page Load Time**: < 2 seconds
-- **API Response Time**: < 100ms (95th percentile)
-- **Database Query Time**: < 50ms
-- **Uptime**: 99.9%
-- **Concurrent Users**: Supports 1000+ simultaneous users
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ## 📄 License
 
-This project is proprietary software. All rights reserved © 2025 HSS Secure.
+This project is proprietary software. All rights reserved.
 
-## 📞 Contact & Support
+## 🤝 Contributing
 
-- **Email**: support@hsssecure.co.za
-- **Documentation**: [https://docs.hsssecure.co.za](https://docs.hsssecure.co.za)
-- **Support Portal**: [https://support.hsssecure.co.za](https://support.hsssecure.co.za)
-
-
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`).
+3. Commit your changes (`git commit -m 'Add AmazingFeature'`).
+4. Push to the branch (`git push origin feature/AmazingFeature`).
+5. Open a Pull Request.
 
 ---
 
