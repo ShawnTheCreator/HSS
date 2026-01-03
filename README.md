@@ -85,27 +85,33 @@ hss-secure/
 ## 📸 Screenshots
 
 ### 🏠 **Dashboard Overview**
-![Dashboard Overview](screenshots/dashboard-overview.png)
+![Dashboard Overview](<img width="1767" height="1227" alt="HSS-Secure-Healthcare-Support-01-02-2026_11_38_PM" src="https://github.com/user-attachments/assets/a5c5c12b-3efb-4496-adab-603120e69fee" />
+)
 *Real-time analytics showing staff distribution, compliance status (86%), and upcoming shifts.*
 
 ### 📅 **Interactive Scheduling Interface**
-![Scheduling Interface](screenshots/scheduling-interface.png)
+![Scheduling Interface](<img width="1912" height="881" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_15_PM" src="https://github.com/user-attachments/assets/19f6e6c4-262c-40c7-a3a5-b36690e7f8c6" />
+)
 *Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.*
 
 ### 🛡️ **Compliance Monitoring Dashboard**
-![Compliance Dashboard](screenshots/compliance-dashboard.png)
+![Compliance Dashboard](<img width="1895" height="890" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_17_PM" src="https://github.com/user-attachments/assets/856718e0-e9a9-4c78-805a-66d48e78254f" />
+)
 *Detailed compliance tracking showing certification status, renewal deadlines, and audit trails.*
 
 ### 📱 **Mobile Staff View**
-![Mobile Staff View](screenshots/mobile-staff-view.png)
+![Mobile Staff View](<img width="154" height="334" alt="image" src="https://github.com/user-attachments/assets/5e5e7bfd-b3dd-4f06-9727-5c90511a4f0a" />
+)
 *Mobile-optimized interface allowing staff to view schedules, clock in/out, and receive notifications.*
 
 ### 🔐 **Administrative Control Panel**
-![Admin Panel](screenshots/admin-panel.png)
+![Admin Panel](<img width="955" height="410" alt="image" src="https://github.com/user-attachments/assets/9d5bccc8-5cfb-4b72-a5e3-b5d719030143" />
+)
 *Role-based access control panel for managing users, permissions, and system settings.*
 
 ### 📊 **Analytics & Reporting**
-![Analytics Dashboard](screenshots/analytics-dashboard.png)
+![Analytics Dashboard](<img width="959" height="437" alt="image" src="https://github.com/user-attachments/assets/a197b1b8-bef9-4ce9-a37b-fe0810351474" />
+)
 *Interactive charts showing overtime trends, department performance, and staffing metrics.*
 
 ## 🚀 Getting Started
@@ -170,7 +176,7 @@ hss-secure/
     ```
 
 5.  **Access the application:**
-    - **Frontend App:** [http://localhost:5173](http://localhost:5173)
+    - **Frontend App:** [http://localhost:8080](http://localhost:8080)
     - **Backend API:** [http://localhost:5000](http://localhost:5000)
     - **Health Check:** [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
