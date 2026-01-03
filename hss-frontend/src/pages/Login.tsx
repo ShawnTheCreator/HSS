@@ -39,7 +39,7 @@ const Login = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<number | null>(null);
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   useEffect(() => {
@@ -133,7 +133,17 @@ const Login = () => {
       setRecaptchaToken(null);
 
       toast({ title: "Login Successful", description: "Redirecting..." });
-      navigate("/dashboard");
+      try {
+        const me = await authApi.me();
+        const role = me?.user?.role || me?.role;
+        if (role === "admin" || role === "super_admin") {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      } catch {
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       console.error("Login error:", err.message || err);
     }
