@@ -84,11 +84,12 @@ hss-secure/
 
 📸 Screenshots
 🏠 Dashboard Overview
-https://github.com/user-attachments/assets/a5c5c12b-3efb-4496-adab-603120e69fee
+
 *Real-time analytics showing staff distribution, compliance status (86%), and upcoming shifts.*
+<img width="1912" height="881" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_15_PM" src="https://github.com/user-attachments/assets/e20a8668-b465-4061-9d8b-bd0411b0c26a" />
 
 📅 Interactive Scheduling Interface
-https://github.com/user-attachments/assets/19f6e6c4-262c-40c7-a3a5-b36690e7f8c6
+
 Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.
 
 🛡️ Compliance Monitoring Dashboard
