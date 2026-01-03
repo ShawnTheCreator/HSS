@@ -1,5 +1,3 @@
-I have revised your `README.md` file. The new content organizes the original information more clearly, adds explanations, and incorporates the requested **Screenshots** section.
-
 You can replace your existing `README.md` file with the text below.
 
 ---
@@ -25,6 +23,7 @@ You can replace your existing `README.md` file with the text below.
 - **Demo Account**: `demo_user` / `hss123demo`
 - **Backend API**: Deployed on Render (see Environment Setup)
 
+Click demo and then click login to access the features of the app.
 ## ✨ Key Features
 
 | Feature Area | Description | Impact |
