@@ -1,5 +1,3 @@
-I have revised your `README.md` file. The new content organizes the original information more clearly, adds explanations, and incorporates the requested **Screenshots** section.
-
 You can replace your existing `README.md` file with the text below.
 
 ---
@@ -22,9 +20,10 @@ You can replace your existing `README.md` file with the text below.
 ## 🚀 Live Demo & Quick Access
 
 - **Live Application**: [https://healthcaresecuresystem.netlify.app/](https://healthcaresecuresystem.netlify.app/)
-- **Demo Account**: `admin123` / `Password123`
+- **Demo Account**: `demo_user` / `hss123demo`
 - **Backend API**: Deployed on Render (see Environment Setup)
 
+Click demo and then click login to access the features of the app.
 ## ✨ Key Features
 
 | Feature Area | Description | Impact |
@@ -82,30 +81,29 @@ hss-secure/
 └── docker/                  # Container configurations
 ```
 
-## 📸 Screenshots
+📸 Screenshots
+🏠 Dashboard Overview
+<img width="948" height="437" alt="Dashboard" src="https://github.com/user-attachments/assets/0f62887f-0492-43ee-b607-23cf6a53fcf4" />
 
-### 🏠 **Dashboard Overview**
-![Dashboard Overview](screenshots/dashboard-overview.png)
 *Real-time analytics showing staff distribution, compliance status (86%), and upcoming shifts.*
+📅 Interactive Scheduling Interface
+<img width="1912" height="881" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_15_PM" src="https://github.com/user-attachments/assets/e20a8668-b465-4061-9d8b-bd0411b0c26a" />
+Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.
 
-### 📅 **Interactive Scheduling Interface**
-![Scheduling Interface](screenshots/scheduling-interface.png)
-*Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.*
+🛡️ Compliance Monitoring Dashboard
+<img width="1895" height="890" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_17_PM" src="https://github.com/user-attachments/assets/bd2617b5-a52b-427c-ae39-90a9a1e216c5" />
+Detailed compliance tracking showing certification status, renewal deadlines, and audit trails.
 
-### 🛡️ **Compliance Monitoring Dashboard**
-![Compliance Dashboard](screenshots/compliance-dashboard.png)
-*Detailed compliance tracking showing certification status, renewal deadlines, and audit trails.*
+📱 Mobile Staff View
+<img width="154" height="331" alt="Mobile" src="https://github.com/user-attachments/assets/0a1a3af7-3f3a-4a53-a81e-012cf380264b" />
+Mobile-optimized interface allowing staff to view schedules, clock in/out, and receive notifications.
 
-### 📱 **Mobile Staff View**
-![Mobile Staff View](screenshots/mobile-staff-view.png)
-*Mobile-optimized interface allowing staff to view schedules, clock in/out, and receive notifications.*
+🔐 Administrative Control Panel
+<img width="951" height="398" alt="AdminDashboard" src="https://github.com/user-attachments/assets/15d104e8-7cff-4d6c-bec7-a7fa0b39e4f9" />
+Role-based access control panel for managing users, permissions, and system settings.
 
-### 🔐 **Administrative Control Panel**
-![Admin Panel](screenshots/admin-panel.png)
-*Role-based access control panel for managing users, permissions, and system settings.*
-
-### 📊 **Analytics & Reporting**
-![Analytics Dashboard](screenshots/analytics-dashboard.png)
+📊 Analytics & Reporting
+<img width="959" height="437" alt="Reports" src="https://github.com/user-attachments/assets/4ca73007-276f-46be-8128-d41da0e599d8" />
 *Interactive charts showing overtime trends, department performance, and staffing metrics.*
 
 ## 🚀 Getting Started
@@ -142,7 +140,7 @@ hss-secure/
     MONGODB_URI=your_mongodb_atlas_connection_string
     JWT_SECRET=your_secure_jwt_secret_key
     NODE_ENV=development
-    FRONTEND_URL=http://localhost:5173 # Your Vite frontend URL
+    FRONTEND_URL=http://localhost:8080 # Your Vite frontend URL
     ```
 
     **Frontend (`hss-frontend/.env`):**
@@ -170,7 +168,7 @@ hss-secure/
     ```
 
 5.  **Access the application:**
-    - **Frontend App:** [http://localhost:5173](http://localhost:5173)
+    - **Frontend App:** [http://localhost:8080](http://localhost:8080)
     - **Backend API:** [http://localhost:5000](http://localhost:5000)
     - **Health Check:** [http://localhost:5000/api/health](http://localhost:5000/api/health)
 
