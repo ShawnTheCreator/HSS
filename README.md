@@ -141,7 +141,7 @@ Role-based access control panel for managing users, permissions, and system sett
     MONGODB_URI=your_mongodb_atlas_connection_string
     JWT_SECRET=your_secure_jwt_secret_key
     NODE_ENV=development
-    FRONTEND_URL=http://localhost:5173 # Your Vite frontend URL
+    FRONTEND_URL=http://localhost:8080 # Your Vite frontend URL
     ```
 
     **Frontend (`hss-frontend/.env`):**
