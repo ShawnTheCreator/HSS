@@ -22,7 +22,7 @@ You can replace your existing `README.md` file with the text below.
 ## 🚀 Live Demo & Quick Access
 
 - **Live Application**: [https://healthcaresecuresystem.netlify.app/](https://healthcaresecuresystem.netlify.app/)
-- **Demo Account**: `admin123` / `Password123`
+- **Demo Account**: `demo_user` / `hss123demo`
 - **Backend API**: Deployed on Render (see Environment Setup)
 
 ## ✨ Key Features
