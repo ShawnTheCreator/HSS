@@ -84,28 +84,27 @@ hss-secure/
 
 📸 Screenshots
 🏠 Dashboard Overview
+<img width="948" height="437" alt="Dashboard" src="https://github.com/user-attachments/assets/0f62887f-0492-43ee-b607-23cf6a53fcf4" />
 
 *Real-time analytics showing staff distribution, compliance status (86%), and upcoming shifts.*
-<img width="1912" height="881" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_15_PM" src="https://github.com/user-attachments/assets/e20a8668-b465-4061-9d8b-bd0411b0c26a" />
-
 📅 Interactive Scheduling Interface
-
+<img width="1912" height="881" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_15_PM" src="https://github.com/user-attachments/assets/e20a8668-b465-4061-9d8b-bd0411b0c26a" />
 Drag-and-drop scheduling calendar with conflict detection and staff availability indicators.
 
 🛡️ Compliance Monitoring Dashboard
-https://github.com/user-attachments/assets/856718e0-e9a9-4c78-805a-66d48e78254f
+<img width="1895" height="890" alt="HSS-Secure-Healthcare-Support-01-03-2026_04_17_PM" src="https://github.com/user-attachments/assets/bd2617b5-a52b-427c-ae39-90a9a1e216c5" />
 Detailed compliance tracking showing certification status, renewal deadlines, and audit trails.
 
 📱 Mobile Staff View
-https://github.com/user-attachments/assets/5e5e7bfd-b3dd-4f06-9727-5c90511a4f0a
+<img width="154" height="331" alt="Mobile" src="https://github.com/user-attachments/assets/0a1a3af7-3f3a-4a53-a81e-012cf380264b" />
 Mobile-optimized interface allowing staff to view schedules, clock in/out, and receive notifications.
 
 🔐 Administrative Control Panel
-https://github.com/user-attachments/assets/9d5bccc8-5cfb-4b72-a5e3-b5d719030143
+<img width="951" height="398" alt="AdminDashboard" src="https://github.com/user-attachments/assets/15d104e8-7cff-4d6c-bec7-a7fa0b39e4f9" />
 Role-based access control panel for managing users, permissions, and system settings.
 
 📊 Analytics & Reporting
-https://github.com/user-attachments/assets/a197b1b8-bef9-4ce9-a37b-fe0810351474
+<img width="959" height="437" alt="Reports" src="https://github.com/user-attachments/assets/4ca73007-276f-46be-8128-d41da0e599d8" />
 *Interactive charts showing overtime trends, department performance, and staffing metrics.*
 
 ## 🚀 Getting Started
